@@ -2,7 +2,9 @@
 -- Тестовые данные для демонстрации работы системы.
 -- Запускается один раз при создании БД (через init.sh).
 -- 
--- Пароли для всех пользователей: 123456 (но хэши пока заглушки)
+-- ВАЖНО: Хэши и соли здесь - заглушки, которые проходят ограничения БД:
+-- password_hash >= 32 символов, password_salt >= 16 символов.
+-- Настоящие Argon2id-хэши генерируются через C# команду: dotnet run -- --seed
 -- ============================================================
 
 -- ============================================================
@@ -11,17 +13,17 @@
 -- ============================================================
 INSERT INTO users (id, login, password_hash, password_salt, role_id, email) VALUES
     -- Студенты (3)
-    ('11111111-1111-1111-1111-111111111111', 'student1', 'PLACEHOLDER_HASH_S1', 'PLACEHOLDER_SALT_S1', 1, 'student1@example.local'),
-    ('22222222-2222-2222-2222-222222222222', 'student2', 'PLACEHOLDER_HASH_S2', 'PLACEHOLDER_SALT_S2', 1, 'student2@example.local'),
-    ('33333333-3333-3333-3333-333333333333', 'student3', 'PLACEHOLDER_HASH_S3', 'PLACEHOLDER_SALT_S3', 1, 'student3@example.local'),
+    ('11111111-1111-1111-1111-111111111111', 'student1', 'PLACEHOLDER_HASH_STUDENT1_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_STUDENT1', 1, 'student1@example.local'),
+    ('22222222-2222-2222-2222-222222222222', 'student2', 'PLACEHOLDER_HASH_STUDENT2_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_STUDENT2', 1, 'student2@example.local'),
+    ('33333333-3333-3333-3333-333333333333', 'student3', 'PLACEHOLDER_HASH_STUDENT3_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_STUDENT3', 1, 'student3@example.local'),
     
     -- Преподаватели (2)
-    ('44444444-4444-4444-4444-444444444444', 'teacher1', 'PLACEHOLDER_HASH_T1', 'PLACEHOLDER_SALT_T1', 2, 'teacher1@example.local'),
-    ('55555555-5555-5555-5555-555555555555', 'teacher2', 'PLACEHOLDER_HASH_T2', 'PLACEHOLDER_SALT_T2', 2, 'teacher2@example.local'),
+    ('44444444-4444-4444-4444-444444444444', 'teacher1', 'PLACEHOLDER_HASH_TEACHER1_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_TEACHER1', 2, 'teacher1@example.local'),
+    ('55555555-5555-5555-5555-555555555555', 'teacher2', 'PLACEHOLDER_HASH_TEACHER2_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_TEACHER2', 2, 'teacher2@example.local'),
     
     -- Админ (1) и Техспец (1)
-    ('66666666-6666-6666-6666-666666666666', 'admin1',   'PLACEHOLDER_HASH_A1', 'PLACEHOLDER_SALT_A1', 3, 'admin1@example.local'),
-    ('77777777-7777-7777-7777-777777777777', 'tech1',    'PLACEHOLDER_HASH_TECH1', 'PLACEHOLDER_SALT_TECH1', 4, 'tech1@example.local');
+    ('66666666-6666-6666-6666-666666666666', 'admin1',   'PLACEHOLDER_HASH_ADMIN1_REPLACE_ME_SOON',   'PLACEHOLDER_SALT_ADMIN1',   3, 'admin1@example.local'),
+    ('77777777-7777-7777-7777-777777777777', 'tech1',    'PLACEHOLDER_HASH_TECH1_REPLACE_ME_SOON',    'PLACEHOLDER_SALT_TECH1',    4, 'tech1@example.local');
 
 -- ============================================================
 -- 2. ПРОФИЛИ ПРЕПОДАВАТЕЛЕЙ

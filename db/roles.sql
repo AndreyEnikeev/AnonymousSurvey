@@ -27,7 +27,10 @@ REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 -- ============================================================
 GRANT SELECT, INSERT, UPDATE ON users            TO auth_service;
 GRANT SELECT, INSERT, UPDATE ON one_time_tokens  TO auth_service;
-GRANT INSERT                 ON audit_events     TO auth_service;
+-- Журнал аудита: Auth пишет события (INSERT) и читает их для эндпоинта O-12 (SELECT).
+-- UPDATE и DELETE намеренно НЕ выдаются: аудит — append-only лог,
+-- никто не должен уметь подменять или удалять историю событий.
+GRANT INSERT, SELECT ON audit_events TO auth_service;
 
 -- Даем права на использование последовательностей (счетчиков автоинкремента)
 -- Без этого сервис не сможет создавать новые записи (например, токены).
