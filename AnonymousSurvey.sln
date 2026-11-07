@@ -1,0 +1,65 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37827.9
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Элементы решения", "Элементы решения", "{754FC069-D67B-A9D7-50A1-8D1CA196D8F1}"
+	ProjectSection(SolutionItems) = preProject
+		.env = .env
+		.env.example = .env.example
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
+		docker-compose.infra.yml = docker-compose.infra.yml
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "db", "db", "{36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}"
+	ProjectSection(SolutionItems) = preProject
+		db\init.sh = db\init.sh
+		db\roles.sql = db\roles.sql
+		db\schema.sql = db\schema.sql
+		db\seed.sql = db\seed.sql
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{3EC21390-54B6-4D98-A4AC-1B618C9D2763}"
+	ProjectSection(SolutionItems) = preProject
+		docs\discrepancies.md = docs\discrepancies.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "requests", "requests", "{B8C306E5-4FFA-4839-BF39-5C1754D03EBE}"
+	ProjectSection(SolutionItems) = preProject
+		requests\README.md = requests\README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "services", "services", "{BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "web", "web", "{BE1C158B-96B4-42BB-9697-6D59273D10CC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Contracts", "Contracts", "{E413CA2B-96AE-4B9C-A76B-00957BE51525}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gateway", "Gateway", "{77839CED-B3ED-4A8C-B63E-6961FA3C29D5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Auth", "Auth", "{5CAB8A0A-F39A-47BE-B729-E3822A862F3E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Surveys", "Surveys", "{61148709-6A68-4065-AC15-81C5F8D4CD87}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Analytics", "Analytics", "{0AC73B1C-66FA-424C-9EF8-EA315569256E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Notifications", "Notifications", "{449B9942-9788-4205-84FC-DA66FA572D3E}"
+EndProject
+Global
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E413CA2B-96AE-4B9C-A76B-00957BE51525} = {BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}
+		{77839CED-B3ED-4A8C-B63E-6961FA3C29D5} = {BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}
+		{5CAB8A0A-F39A-47BE-B729-E3822A862F3E} = {BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}
+		{61148709-6A68-4065-AC15-81C5F8D4CD87} = {BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}
+		{0AC73B1C-66FA-424C-9EF8-EA315569256E} = {BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}
+		{449B9942-9788-4205-84FC-DA66FA572D3E} = {BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0C2F6AD6-50F8-41EC-AE6B-F9D9B6111104}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,177 @@
+# ==============================================================================
+# Docker Compose для инфраструктуры проекта AnonymousSurvey
+# 
+# Этот файл описывает 5 контейнеров: PostgreSQL, Redis, RabbitMQ, MinIO, MailHog.
+# Запуск: docker compose -f docker-compose.infra.yml up -d
+# Переменные окружения (пароли) берутся из файла .env, который лежит в этой же папке.
+# ==============================================================================
+
+services:
+
+  # ============================================================================
+  # 1. PostgreSQL - Основная реляционная база данных
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine # Используем официальный легковесный образ (alpine) 16-й версии
+    container_name: anon-survey-postgres # Жестко задаем имя контейнера
+    restart: unless-stopped # Если контейнер упадет, Docker попытается его перезапустить (если мы сами его не остановили)
+    
+    environment:
+      # Эти переменные Docker передаст внутрь контейнера при запуске.
+      # Значения в ${...} берутся из файла .env
+      POSTGRES_DB: survey_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      
+      # Дополнительные переменные, которые нужны нашему скрипту init.sh
+      # (чтобы он мог создать роли для сервисов с правильными паролями)
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
+      SURVEYS_DB_PASSWORD: ${SURVEYS_DB_PASSWORD}
+      ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD}
+      NOTIFICATIONS_DB_PASSWORD: ${NOTIFICATIONS_DB_PASSWORD}
+      TZ: UTC+3 # Устанавливаем часовой пояс UTC (хорошая практика для БД)
+      
+    ports:
+      # Пробрасываем порт из контейнера на ваш компьютер.
+      # Слева - порт на вашем ПК (из .env), справа - порт внутри контейнера (всегда 5432).
+      - "${POSTGRES_PORT:-5432}:5432"
+      
+    volumes:
+      # 1. Постоянное хранилище для данных БД (чтобы они не пропадали при перезапуске)
+      - postgres_data:/var/lib/postgresql/data
+      
+      # 2. Монтируем наши скрипты внутрь контейнера.
+      # Docker автоматически выполнит все .sh и .sql файлы из папки /docker-entrypoint-initdb.d/ 
+      # ПРИ ПЕРВОМ СОЗДАНИИ БАЗЫ (когда папка postgres_data пуста).
+      - ./db/init.sh:/docker-entrypoint-initdb.d/init.sh:ro # :ro означает "только для чтения"
+      - ./db/schema.sql:/db/schema.sql:ro
+      - ./db/roles.sql:/db/roles.sql:ro
+      - ./db/seed.sql:/db/seed.sql:ro
+      
+    healthcheck:
+      # Проверка: "жив ли контейнер?". Docker будет запускать эту команду каждые 5 секунд.
+      # Если база готова принимать подключения, команда pg_isready вернет успех.
+      # Другие контейнеры могут ждать, пока статус не станет "healthy".
+      test: ["CMD-SHELL", "pg_isready -U postgres -d survey_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10 # Если 10 раз подряд не ответил - считаем, что упал
+
+  # ============================================================================
+  # 2. Redis - Хранилище для сессий, токенов и кэша
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: anon-survey-redis
+    restart: unless-stopped
+    
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
+    # --requirepass - заставляет Redis требовать пароль (безопасность)
+    # --appendonly yes - включает сохранение данных на диск (чтобы сессии не слетали при перезапуске)
+    
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+      
+    volumes:
+      - redis_data:/data
+      
+    healthcheck:
+      # Проверяем, отвечает ли Redis. Флаг -a передает пароль.
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ============================================================================
+  # 3. RabbitMQ - Брокер сообщений (для фоновой отправки писем)
+  # ============================================================================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine # "management" означает, что внутри есть веб-интерфейс
+    container_name: anon-survey-rabbitmq
+    restart: unless-stopped
+    
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"       # Порт для общения программ (AMQP)
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672" # Порт для веб-интерфейса (Management UI)
+      
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ============================================================================
+  # 4. MinIO - S3-совместимое хранилище файлов (для отчетов)
+  # ============================================================================
+  minio:
+    # Используем публичный образ от Bitnami вместо закрытого официального
+    image: bitnamilegacy/minio:2025.4.22  # Фиксируем версию для стабильности
+    container_name: anon-survey-minio
+    restart: unless-stopped
+    # Указываем правильный путь к данным внутри контейнера
+    command: server /bitnami/minio/data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      # Монтируем том в правильную директорию
+      - minio_data:/bitnami/minio/data
+    healthcheck:
+      # Используем curl для проверки HTTP-эндпоинта MinIO
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # 5. MinIO Init (Одноразовый контейнер)
+  # ============================================================================
+  # Запускается, создает бакет "reports" и завершается (Exited).
+  minio-init:
+    # Аналог клиента mc от Bitnami для создания бакета
+    image: bitnamilegacy/minio-client:latest
+    container_name: anon-survey-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/${MINIO_BUCKET_REPORTS} &&
+      echo 'MinIO bucket ready'
+      "
+    restart: "no"
+
+  # ============================================================================
+  # 6. MailHog - Заглушка почтового сервера
+  # ============================================================================
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: anon-survey-mailhog
+    restart: unless-stopped
+    
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025" # SMTP порт (сюда сервис C# будет "отправлять" письма)
+      - "${MAILHOG_HTTP_PORT:-8025}:8025" # Web UI порт (здесь вы будете читать эти письма)
+
+# ==============================================================================
+# Секция VOLUMES (Именованные тома)
+# ==============================================================================
+# Здесь мы объявляем тома, которые используем в сервисах выше.
+# Docker будет хранить эти данные в недрах своей виртуальной машины.
+# Благодаря этому при команде "docker compose down" данные не удаляются.
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  minio_data:
