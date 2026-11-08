@@ -37,6 +37,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "web", "web", "{BE1C158B-96B
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Auth", "services\Auth\Auth.csproj", "{225B436F-8CC9-41C4-A232-34D1F7A4D538}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gateway", "services\Gateway\Gateway.csproj", "{2BACC20F-3CEF-463D-B500-857A9E31C8BC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,12 +49,17 @@ Global
 		{225B436F-8CC9-41C4-A232-34D1F7A4D538}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{225B436F-8CC9-41C4-A232-34D1F7A4D538}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{225B436F-8CC9-41C4-A232-34D1F7A4D538}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2BACC20F-3CEF-463D-B500-857A9E31C8BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2BACC20F-3CEF-463D-B500-857A9E31C8BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2BACC20F-3CEF-463D-B500-857A9E31C8BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2BACC20F-3CEF-463D-B500-857A9E31C8BC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{225B436F-8CC9-41C4-A232-34D1F7A4D538} = {BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}
+		{2BACC20F-3CEF-463D-B500-857A9E31C8BC} = {BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0C2F6AD6-50F8-41EC-AE6B-F9D9B6111104}
