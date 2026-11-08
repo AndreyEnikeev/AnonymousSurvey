@@ -1,4 +1,4 @@
-using Auth.Data;
+using Auth.DataDb;
 using Auth.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;

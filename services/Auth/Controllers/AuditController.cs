@@ -1,4 +1,4 @@
-﻿using Auth.Data;
+﻿using Auth.DataDb;
 using Auth.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

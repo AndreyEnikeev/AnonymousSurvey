@@ -44,6 +44,7 @@ GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq    TO auth_service;
 -- ============================================================
 -- Читает только справочники статусов
 GRANT SELECT ON user_roles, period_statuses, survey_statuses, question_types TO surveys_service;
+GRANT SELECT (id, login) ON users TO surveys_service;
 
 -- Управляет периодами и анкетами
 GRANT SELECT, INSERT, UPDATE ON periods          TO surveys_service;
@@ -59,7 +60,8 @@ GRANT SELECT, INSERT, UPDATE ON answers          TO surveys_service;
 GRANT SELECT ON teachers, disciplines, teacher_disciplines TO surveys_service;
 
 -- Пишет логи о смене периодов и отправке анкет
-GRANT INSERT ON audit_events TO surveys_service;
+-- (SELECT нужен, чтобы EF Core мог прочитать сгенерированный id через RETURNING)
+GRANT INSERT, SELECT ON audit_events TO surveys_service;
 
 -- Права на последовательности (для создания вопросов, бюллетеней и ответов)
 GRANT USAGE, SELECT ON SEQUENCE questions_id_seq       TO surveys_service;
