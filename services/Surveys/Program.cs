@@ -81,6 +81,8 @@ namespace Surveys
                     {
                         h.Username(rabbitUser);
                         h.Password(rabbitPass);
+                        // Отправляем Heartbeat каждые 30 секунд, чтобы брокер не рвал соединение при простое.
+                        h.Heartbeat(TimeSpan.FromSeconds(30));
                     });
                 });
             });

@@ -408,8 +408,12 @@ namespace Surveys.Controllers
             // 9) Публикуем событие в RabbitMQ.
             // Сервис уведомлений (на Этапе 4) получит это сообщение и разошлёт письма.
             await _publishEndpoint.Publish(new PeriodStatusChanged(
-                period.Id, oldStatus, newStatus, DateTime.UtcNow
-            ), ct);
+                    period.Id,
+                    period.Name,
+                    oldStatus,
+                    newStatus,
+                    DateTime.UtcNow
+                ), ct);
 
             // 10) Возвращаем ответ клиенту.
             return Ok(new UpdatePeriodStatusResponse

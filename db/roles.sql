@@ -89,9 +89,8 @@ GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq TO analytics_service;
 
 -- ============================================================
 -- СЕРВИС УВЕДОМЛЕНИЙ
--- Самый ограниченный. Ему вообще не нужна база данных для работы!
--- Он только пишет логи о том, что письмо отправлено.
--- Даже если его взломают, хакер максимум испортит пару логов.
 -- ============================================================
 GRANT INSERT ON audit_events TO notifications_service;
+GRANT SELECT (id, email, role_id) ON users TO notifications_service
+GRANT SELECT (id) ON audit_events TO notifications_service;
 GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq TO notifications_service;
