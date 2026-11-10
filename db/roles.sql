@@ -44,7 +44,7 @@ GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq    TO auth_service;
 -- ============================================================
 -- Читает только справочники статусов
 GRANT SELECT ON user_roles, period_statuses, survey_statuses, question_types TO surveys_service;
-GRANT SELECT (id, login) ON users TO surveys_service;
+GRANT SELECT (id, login, full_name) ON users TO surveys_service;
 
 -- Управляет периодами и анкетами
 GRANT SELECT, INSERT, UPDATE ON periods          TO surveys_service;
@@ -79,6 +79,7 @@ GRANT SELECT ON ballots, answers, periods, survey_templates, questions,
                 disciplines, teachers, teacher_disciplines,
                 llm_classifications, sentiment_types, period_statuses
     TO analytics_service;
+GRANT SELECT (id, login, full_name) ON users TO analytics_service;
 
 -- Создает и обновляет записи о выгрузках (файлах в MinIO)
 GRANT SELECT, INSERT, UPDATE ON exports TO analytics_service;
@@ -91,6 +92,6 @@ GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq TO analytics_service;
 -- СЕРВИС УВЕДОМЛЕНИЙ
 -- ============================================================
 GRANT INSERT ON audit_events TO notifications_service;
-GRANT SELECT (id, email, role_id) ON users TO notifications_service
+GRANT SELECT (id, email, role_id, full_name) ON users TO notifications_service
 GRANT SELECT (id) ON audit_events TO notifications_service;
 GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq TO notifications_service;

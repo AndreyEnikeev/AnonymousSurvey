@@ -11,19 +11,19 @@
 -- 1. ПОЛЬЗОВАТЕЛИ (7 штук)
 -- Роли: 1=student, 2=teacher, 3=admin, 4=tech
 -- ============================================================
-INSERT INTO users (id, login, password_hash, password_salt, role_id, email) VALUES
-    -- Студенты (3)
-    ('11111111-1111-1111-1111-111111111111', 'student1', 'PLACEHOLDER_HASH_STUDENT1_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_STUDENT1', 1, 'student1@example.local'),
-    ('22222222-2222-2222-2222-222222222222', 'student2', 'PLACEHOLDER_HASH_STUDENT2_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_STUDENT2', 1, 'student2@example.local'),
-    ('33333333-3333-3333-3333-333333333333', 'student3', 'PLACEHOLDER_HASH_STUDENT3_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_STUDENT3', 1, 'student3@example.local'),
+INSERT INTO users (id, login, password_hash, password_salt, role_id, email, full_name) VALUES
+    -- Студенты
+    ('11111111-1111-1111-1111-111111111111', 'student1', 'PLACEHOLDER_HASH_STUDENT1_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_STUDENT1', 1, 'student1@example.local', 'Студентов Студент Студентович'),
+    ('22222222-2222-2222-2222-222222222222', 'student2', 'PLACEHOLDER_HASH_STUDENT2_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_STUDENT2', 1, 'student2@example.local', 'Петров Петр Петрович'),
+    ('33333333-3333-3333-3333-333333333333', 'student3', 'PLACEHOLDER_HASH_STUDENT3_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_STUDENT3', 1, 'student3@example.local', 'Сидорова Анна Ивановна'),
     
-    -- Преподаватели (2)
-    ('44444444-4444-4444-4444-444444444444', 'teacher1', 'PLACEHOLDER_HASH_TEACHER1_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_TEACHER1', 2, 'teacher1@example.local'),
-    ('55555555-5555-5555-5555-555555555555', 'teacher2', 'PLACEHOLDER_HASH_TEACHER2_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_TEACHER2', 2, 'teacher2@example.local'),
+    -- Преподаватели
+    ('44444444-4444-4444-4444-444444444444', 'teacher1', 'PLACEHOLDER_HASH_TEACHER1_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_TEACHER1', 2, 'teacher1@example.local', 'Иванов Иван Иванович'),
+    ('55555555-5555-5555-5555-555555555555', 'teacher2', 'PLACEHOLDER_HASH_TEACHER2_REPLACE_ME_SOON', 'PLACEHOLDER_SALT_TEACHER2', 2, 'teacher2@example.local', 'Петрова Мария Сергеевна'),
     
-    -- Админ (1) и Техспец (1)
-    ('66666666-6666-6666-6666-666666666666', 'admin1',   'PLACEHOLDER_HASH_ADMIN1_REPLACE_ME_SOON',   'PLACEHOLDER_SALT_ADMIN1',   3, 'admin1@example.local'),
-    ('77777777-7777-7777-7777-777777777777', 'tech1',    'PLACEHOLDER_HASH_TECH1_REPLACE_ME_SOON',    'PLACEHOLDER_SALT_TECH1',    4, 'tech1@example.local');
+    -- Админ и Техспец
+    ('66666666-6666-6666-6666-666666666666', 'admin1',   'PLACEHOLDER_HASH_ADMIN1_REPLACE_ME_SOON',   'PLACEHOLDER_SALT_ADMIN1',   3, 'admin1@example.local',   'Смирнов Алексей Владимирович'),
+    ('77777777-7777-7777-7777-777777777777', 'tech1',    'PLACEHOLDER_HASH_TECH1_REPLACE_ME_SOON',    'PLACEHOLDER_SALT_TECH1',    4, 'tech1@example.local',    'Технический Специалист');
 
 -- ============================================================
 -- 2. ПРОФИЛИ ПРЕПОДАВАТЕЛЕЙ

@@ -49,11 +49,18 @@ namespace Gateway
             // ==========================================================
             // 2. Redis — для распределённого Rate Limiting
             // ==========================================================
-            var redisConnection = builder.Configuration.GetConnectionString("Redis")
-                ?? throw new InvalidOperationException("ConnectionStrings:Redis не настроен");
+            var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
+                ?? throw new InvalidOperationException("ConnectionStrings:Redis не настроен в User Secrets");
 
-            builder.Services.AddSingleton<IConnectionMultiplexer>(
-                _ => ConnectionMultiplexer.Connect(redisConnection));
+            // Настраиваем параметры подключения к Redis.
+            // abortConnect=false (AbortOnConnectFail) критически важен:
+            // он позволяет сервису запуститься, даже если Redis временно недоступен,
+            // и переподключиться позже (защита от порядка запуска контейнеров).
+            var redisOptions = StackExchange.Redis.ConfigurationOptions.Parse(redisConnectionString);
+            redisOptions.AbortOnConnectFail = false;
+
+            builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(
+                StackExchange.Redis.ConnectionMultiplexer.Connect(redisOptions));
 
             // ==========================================================
             // 3. YARP: маршруты и кластеры из appsettings.json

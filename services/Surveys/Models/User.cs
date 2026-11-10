@@ -11,5 +11,8 @@
 
         /// <summary>Логин пользователя.</summary>
         public string Login { get; set; } = string.Empty;
+
+        /// <summary>Имя пользователя.</summary>
+        public string FullName { get; set; } = string.Empty;
     }
 }

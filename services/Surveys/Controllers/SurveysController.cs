@@ -83,7 +83,7 @@ namespace Surveys.Controllers
             var dto = new SurveyDetailsDto
             {
                 SurveyId = survey.Id,
-                Title = $"{survey.Discipline.Name} — {survey.Teacher.User.Login}",
+                Title = $"{survey.Discipline.Name} — {survey.Teacher.User.FullName}",
                 PeriodId = survey.PeriodId,
                 Status = survey.Status.Code,
                 AlreadySubmitted = alreadySubmitted,

@@ -2,7 +2,6 @@ using Auth.DataDb;
 using Auth.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
@@ -10,48 +9,20 @@ using System.Text;
 namespace Auth
 {
     /// <summary>
-    /// Главный класс приложения, точка входа (Entry Point).
+    /// Главный класс приложения Auth (C-03), точка входа.
     /// </summary>
     public class Program
     {
+        /// <summary>
+        /// Основной метод, выполняющий настройку и запуск сервиса аутентификации.
+        /// </summary>
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
             // 1. НАСТРОЙКА ВСТРОЕННЫХ СЕРВИСОВ ASP.NET CORE
             builder.Services.AddControllers();
-#if DEBUG
-            // Swagger с поддержкой JWT: добавляет кнопку Authorize,
-            // чтобы можно было проверять защищённые эндпоинты прямо в UI.
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen(options =>
-            {
-                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-                {
-                    Name = "Authorization",
-                    Type = SecuritySchemeType.Http,
-                    Scheme = "bearer",
-                    BearerFormat = "JWT",
-                    In = ParameterLocation.Header,
-                    Description = "Вставьте JWT access-токен."
-                });
 
-                options.AddSecurityRequirement(new OpenApiSecurityRequirement
-                {
-                    {
-                        new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        Array.Empty<string>()
-                    }
-                });
-            });
-#endif
             // 2. ПРОВЕРКА JWT ВНУТРИ AUTH (defense in depth)
             var jwtKey = builder.Configuration["Jwt:SigningKey"]
                 ?? throw new InvalidOperationException("Jwt:SigningKey не настроен в User Secrets");
@@ -82,40 +53,60 @@ namespace Auth
             builder.Services.AddDbContext<AppDbContext>(options =>
                 options.UseNpgsql(connectionString));
 
-            var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+            var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
+                ?? throw new InvalidOperationException("ConnectionStrings:Redis не настроен в User Secrets");
+
+            // Настраиваем параметры подключения к Redis.
+            var redisOptions = StackExchange.Redis.ConfigurationOptions.Parse(redisConnectionString);
+            redisOptions.AbortOnConnectFail = false;
+
             builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(
-                StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnectionString!));
+                StackExchange.Redis.ConnectionMultiplexer.Connect(redisOptions));
 
             // 4. РЕГИСТРАЦИЯ НАШИХ СЕРВИСОВ
             builder.Services.AddScoped<PasswordHasher>();
             builder.Services.AddScoped<TokenService>();
 
             var app = builder.Build();
-#if DEBUG
-            if (app.Environment.IsDevelopment() && args.Contains("--seed"))
-            {
-                SeedPasswords(app);
-                return;
-            }
 
+#if DEBUG
+            // 5. АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ ПАРОЛЕЙ
+            // Проверяем базу: если там лежат заглушки из seed.sql, заменяем их на реальные хэши.
             if (app.Environment.IsDevelopment())
             {
-                app.UseSwagger();
-                app.UseSwaggerUI();
+                SeedPasswordsAutomatically(app);
             }
 #endif
+            // 6. HTTP-КОНВЕЙЕР (порядок критичен)
             app.UseHttpsRedirection();
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
+
             app.Run();
         }
+
 #if DEBUG
-        private static void SeedPasswords(WebApplication app)
+        /// <summary>
+        /// Проверяет наличие "заглушек" паролей в БД и автоматически генерирует для них Argon2id-хэши.
+        /// Выполняется только при запуске, не требует ручного вмешательства.
+        /// </summary>
+        private static void SeedPasswordsAutomatically(WebApplication app)
         {
             using var scope = app.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var hasher = scope.ServiceProvider.GetRequiredService<PasswordHasher>();
+
+            // Проверяем, есть ли хотя бы один пользователь с "заглушкой"
+            bool hasPlaceholders = db.Users.Any(u => u.PasswordHash.StartsWith("PLACEHOLDER_"));
+
+            if (!hasPlaceholders)
+            {
+                // Если заглушек нет, значит пароли уже сгенерированы, ничего не делаем.
+                return;
+            }
+
+            Console.WriteLine("=== Обнаружены заглушки паролей. Генерация реальных Argon2id-хэшей... ===");
 
             var testUsers = new Dictionary<string, string>
             {
@@ -128,8 +119,6 @@ namespace Auth
                 { "tech1",    "Tech1!Pass"    }
             };
 
-            Console.WriteLine("=== Начинаем генерацию хешей для тестовых пользователей ===");
-
             foreach (var kvp in testUsers)
             {
                 var login = kvp.Key;
@@ -140,16 +129,11 @@ namespace Auth
                 {
                     user.PasswordSalt = hasher.GenerateSalt();
                     user.PasswordHash = hasher.HashPassword(password, user.PasswordSalt);
-                    Console.WriteLine($"Пароль для {login} успешно обновлен.");
-                }
-                else
-                {
-                    Console.WriteLine($"ВНИМАНИЕ: Пользователь {login} не найден в базе!");
                 }
             }
 
             db.SaveChanges();
-            Console.WriteLine("=== Все хеши успешно сохранены в БД! ===");
+            Console.WriteLine("=== Все хэши успешно сгенерированы и сохранены в БД! ===");
         }
 #endif
     }

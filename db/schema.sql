@@ -104,6 +104,7 @@ CREATE TABLE users (
     password_salt varchar(64)   NOT NULL,
     role_id       smallint      NOT NULL,
     email         varchar(255)  NOT NULL,
+    full_name     varchar(255)  NOT NULL,
     CONSTRAINT pk_users PRIMARY KEY (id),
     CONSTRAINT uq_users_login UNIQUE (login),
     CONSTRAINT uq_users_email UNIQUE (email),
