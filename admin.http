@@ -1,0 +1,93 @@
+﻿@host = http://localhost:8080
+
+# ============================================================
+# 1. ПЕРИОДЫ (Получаем список, сохраняем ID)
+# ============================================================
+
+### O-08: Список всех периодов
+# @name getPeriods
+GET {{host}}/api/admin/periods
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### O-09: Смена статуса периода (открыть)
+# Берет periodId первого периода из списка
+PATCH {{host}}/api/admin/periods/{{getPeriods.response.body.$.[0].periodId}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "status": "open",
+  "comment": "Открываем анкетирование"
+}
+
+### O-09: Смена статуса периода (закрыть обратно)
+# Использует тот же periodId
+PATCH {{host}}/api/admin/periods/{{getPeriods.response.body.$.[0].periodId}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "status": "closed",
+  "comment": "Закрываем обратно"
+}
+
+### D-20: Создание нового периода
+# @name createPeriod
+POST {{host}}/api/admin/periods
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Весна 2027",
+  "startDate": "2027-02-01",
+  "endDate": "2027-06-30"
+}
+
+# ============================================================
+# 2. АУДИТ
+# ============================================================
+
+### O-12: Журнал аудита
+GET {{host}}/api/audit/events?limit=10
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+# ============================================================
+# 3. УПРАВЛЕНИЕ АНКЕТАМИ (CRUD)
+# ============================================================
+
+### D-19: Список всех шаблонов анкет
+# @name getAdminSurveys
+GET {{host}}/api/admin/surveys
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### D-19: Справочники (берем ID препода и дисциплины)
+# @name getDictionaries
+GET {{host}}/api/admin/surveys/dictionaries
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### D-19: Создание новой анкеты
+# @name createSurvey
+# Использует ID созданного периода, первую дисциплину и первого преподавателя из справочников
+POST {{host}}/api/admin/surveys
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "periodId": "{{createPeriod.response.body.$.id}}",
+  "disciplineId": "{{getDictionaries.response.body.$.disciplines.[0].id}}",
+  "teacherId": "{{getDictionaries.response.body.$.teachers.[0].id}}",
+  "questions": [
+    { "text": "Оцените качество изложения материала", "typeId": 1 },
+    { "text": "Ваши пожелания", "typeId": 2 }
+  ]
+}
+
+### D-19: Публикация анкеты (draft → active)
+# Берет surveyId из ответа createSurvey
+PATCH {{host}}/api/admin/surveys/{{createSurvey.response.body.$.surveyId}}/status
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "statusId": 2
+}

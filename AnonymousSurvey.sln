@@ -25,12 +25,19 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{3EC21390-54B6-4D98-A4AC-1B618C9D2763}"
 	ProjectSection(SolutionItems) = preProject
 		docs\discrepancies.md = docs\discrepancies.md
-		map.md = map.md
+		FILE_TREE.md = FILE_TREE.md
+		docs\PROJECT_MAP.md = docs\PROJECT_MAP.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "requests", "requests", "{B8C306E5-4FFA-4839-BF39-5C1754D03EBE}"
 	ProjectSection(SolutionItems) = preProject
+		admin.http = admin.http
+		analytics.http = analytics.http
+		auth.http = auth.http
+		llm.http = llm.http
 		requests\README.md = requests\README.md
+		security-checks.http = security-checks.http
+		surveys.http = surveys.http
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "services", "services", "{BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}"

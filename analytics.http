@@ -1,0 +1,27 @@
+@host = http://localhost:8080
+
+# ============================================================
+# ќ“„≈“џ (O-07, O-10)
+# ============================================================
+
+### O-07: јгрегированный отчЄт Ч ѕреподаватель
+# ¬идит только свои данные
+GET {{host}}/api/reports/aggregated
+Authorization: Bearer {{loginTeacher.response.body.$.accessToken}}
+
+### O-07: јгрегированный отчЄт Ч јдминистратор
+# ¬идит всЄ
+GET {{host}}/api/reports/aggregated
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### O-10: Ёкспорт отчЄта в Excel Ч јдминистратор
+# Ѕерет ID первого периода из admin.http
+POST {{host}}/api/admin/export
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Idempotency-Key: {{$guid}}
+Content-Type: application/json
+
+{
+  "periodId": "{{getPeriods.response.body.$.[0].periodId}}",
+  "format": "xlsx"
+}

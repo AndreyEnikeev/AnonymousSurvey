@@ -1,0 +1,42 @@
+@host = http://localhost:8080
+
+# ============================================================
+# ПРОВЕРКА 1: Запрос объекта другого пользователя
+# Студент пытается получить отчёт преподавателя
+# ============================================================
+### Ожидается: 403 Forbidden
+GET {{host}}/api/reports/aggregated?teacherId={{loginTeacher.response.body.$.userId}}
+Authorization: Bearer {{loginStudent.response.body.$.accessToken}}
+
+# ============================================================
+# ПРОВЕРКА 2: Создание объекта с лишними полями
+# Студент пытается подсунуть чужой studentId и статус
+# ============================================================
+### Ожидается: 202 Accepted (лишние поля игнорируются)
+POST {{host}}/api/surveys/11111111-1111-aaaa-aaaa-111111111111/submit
+Authorization: Bearer {{loginStudent.response.body.$.accessToken}}
+Idempotency-Key: {{$guid}}
+Content-Type: application/json
+
+{
+  "studentId": "22222222-2222-2222-2222-222222222222", 
+  "status": "accepted",
+  "answers": [
+    { "questionId": 1, "value": "5" }
+  ]
+}
+
+# ============================================================
+# ПРОВЕРКА 3: Привилегированная операция обычным токеном
+# Студент пытается создать период
+# ============================================================
+### Ожидается: 403 Forbidden
+POST {{host}}/api/admin/periods
+Authorization: Bearer {{loginStudent.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Хакерский период",
+  "startDate": "2027-01-01",
+  "endDate": "2027-12-31"
+}

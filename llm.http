@@ -1,0 +1,11 @@
+@host = http://localhost:5138
+
+### O-11: Классификация текста (ожидается 503)
+# Для работы этого запроса нужно запустить LlmOrchestrator локально (в VS)
+# В Docker он доступен только внутри сети.
+POST {{host}}/api/internal/llm/classify
+Content-Type: application/json
+
+{
+  "text": "Отличный преподаватель, всё понятно"
+}

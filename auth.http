@@ -1,0 +1,96 @@
+@host = http://localhost:8080
+
+# ============================================================
+# 1. ЛОГИНЫ (Сохраняем ответы в переменные)
+# ============================================================
+
+### O-01: Логин (Student)
+# @name loginStudent
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "login": "student1",
+  "password": "Student1!Pass"
+}
+
+### O-01: Логин (Teacher)
+# @name loginTeacher
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "login": "teacher1",
+  "password": "Teacher1!Pass"
+}
+
+### O-01: Логин (Admin)
+# @name loginAdmin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "login": "admin1",
+  "password": "Admin1!Pass"
+}
+
+### Негативный: Логин с неверным паролем (ожидается 401)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "login": "student1",
+  "password": "WrongPassword"
+}
+
+# ============================================================
+# 2. ОБНОВЛЕНИЕ И ВЫХОД (Автоматическая подстановка)
+# ============================================================
+
+### D-13: Обновление пары токенов (Student)
+# @name refreshStudent
+POST {{host}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{loginStudent.response.body.$.refreshToken}}"
+}
+
+### Logout (без предварительного Refresh)
+POST {{host}}/api/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{loginStudent.response.body.$.refreshToken}}"
+}
+
+### Logout (после Refresh)
+# Берет НОВЫЙ токен из refreshStudent
+POST {{host}}/api/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshStudent.response.body.$.refreshToken}}"
+}
+
+# ============================================================
+# 3. ВОССТАНОВЛЕНИЕ ПАРОЛЯ
+# ============================================================
+
+### O-02: Запрос на сброс пароля
+POST {{host}}/api/auth/password-reset
+Content-Type: application/json
+
+{
+  "loginOrEmail": "student1"
+}
+
+### O-02 (confirm): Подтверждение сброса пароля
+# Токен берите из письма в MailHog (http://localhost:8025)
+POST {{host}}/api/auth/password-reset/confirm
+Content-Type: application/json
+
+{
+  "token": "ВСТАВЬ_ТОКЕН_ИЗ_ПИСЬМА",
+  "newPassword": "NewPassword123!"
+}

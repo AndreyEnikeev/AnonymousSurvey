@@ -1,0 +1,63 @@
+@host = http://localhost:8080
+
+# ============================================================
+# 1. ПОЛУЧЕНИЕ СПИСКА АНКЕТ (Сохраняем ответ)
+# ============================================================
+
+### O-04: Список активных анкет (Student)
+# @name getActiveSurveys
+GET {{host}}/api/surveys/active
+Authorization: Bearer {{loginStudent.response.body.$.accessToken}}
+
+# ============================================================
+# 2. РАБОТА С КОНКРЕТНОЙ АНКЕТОЙ (Автоматическая подстановка ID)
+# ============================================================
+
+### O-13: Получение анкеты по ID (Student)
+# Берет surveyId первой анкеты из ответа выше
+GET {{host}}/api/surveys/{{getActiveSurveys.response.body.$.[0].surveyId}}
+Authorization: Bearer {{loginStudent.response.body.$.accessToken}}
+
+### Негативный: Несуществующая анкета (ожидается 404)
+GET {{host}}/api/surveys/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{loginStudent.response.body.$.accessToken}}
+
+### O-05: Отправка анкеты (Student)
+# Берет surveyId из getActiveSurveys и генерирует уникальный Idempotency-Key
+POST {{host}}/api/surveys/{{getActiveSurveys.response.body.$.[0].surveyId}}/submit
+Authorization: Bearer {{loginStudent.response.body.$.accessToken}}
+Idempotency-Key: {{$guid}}
+Content-Type: application/json
+
+{
+  "answers": [
+    { "questionId": 1, "value": "5" },
+    { "questionId": 2, "value": "4" },
+    { "questionId": 3, "value": "5" },
+    { "questionId": 4, "value": "4" },
+    { "questionId": 5, "value": "Отличный преподаватель!" }
+  ]
+}
+
+### Негативный: Отправка без Idempotency-Key (ожидается 400)
+POST {{host}}/api/surveys/{{getActiveSurveys.response.body.$.[0].surveyId}}/submit
+Authorization: Bearer {{loginStudent.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "answers": [{ "questionId": 1, "value": "5" }]
+}
+
+### Негативный: Оценка вне диапазона 1-5 (ожидается 400)
+POST {{host}}/api/surveys/{{getActiveSurveys.response.body.$.[0].surveyId}}/submit
+Authorization: Bearer {{loginStudent.response.body.$.accessToken}}
+Idempotency-Key: {{$guid}}
+Content-Type: application/json
+
+{
+  "answers": [{ "questionId": 1, "value": "10" }]
+}
+
+### O-06: История отправленных анкет (Student)
+GET {{host}}/api/my-surveys
+Authorization: Bearer {{loginStudent.response.body.$.accessToken}}
