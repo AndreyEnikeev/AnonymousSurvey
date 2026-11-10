@@ -29,6 +29,7 @@ services:
       SURVEYS_DB_PASSWORD: ${SURVEYS_DB_PASSWORD}
       ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD}
       NOTIFICATIONS_DB_PASSWORD: ${NOTIFICATIONS_DB_PASSWORD}
+      LLM_DB_PASSWORD: ${LLM_DB_PASSWORD}
       TZ: UTC+3 # Устанавливаем часовой пояс UTC (хорошая практика для БД)
       
     ports:

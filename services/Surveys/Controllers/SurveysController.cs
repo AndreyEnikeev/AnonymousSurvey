@@ -198,8 +198,7 @@ namespace Surveys.Controllers
             var alreadyVoted = await _db.VoterCheckins
                 .AnyAsync(vc => vc.StudentId == studentId && vc.SurveyTemplateId == surveyId && vc.HasVoted, ct);
 
-            if (alreadyVoted)
-                return StatusCode(StatusCodes.Status409Conflict, new { message = "Вы уже отправляли эту анкету." });
+            if (alreadyVoted) return StatusCode(StatusCodes.Status409Conflict, new { message = "Вы уже отправляли эту анкету." });
 
             // 5) Валидация ответов.
             var answerEntities = new List<Answer>();
@@ -208,7 +207,7 @@ namespace Surveys.Controllers
                 var question = survey.Questions.FirstOrDefault(q => q.Id == ans.QuestionId);
                 if (question is null) return BadRequest(new { message = $"Вопрос {ans.QuestionId} не принадлежит этой анкете." });
 
-                short? valueInt = null; // Используем short, как в БД (smallint)
+                short? valueInt = null;
                 string? valueText = null;
 
                 if (question.TypeId == 1) // Тип "scale" (1-5)
@@ -257,7 +256,20 @@ namespace Surveys.Controllers
                 await _db.SaveChangesAsync(ct);
                 await transaction.CommitAsync(ct);
 
-                // 7) Кэшируем результат идемпотентности в Redis на 24 часа.
+                // 7) Постановка задачи на классификацию ИИ (L-15).
+                // Берем только текстовые ответы, которые реально были заполнены.
+                var textAnswers = answerEntities.Where(a => !string.IsNullOrWhiteSpace(a.ValueText)).ToList();
+
+                foreach (var textAnswer in textAnswers)
+                {
+                    // Публикуем событие в RabbitMQ.
+                    await _publishEndpoint.Publish(new LlmClassificationRequested(
+                        textAnswer.Id,
+                        textAnswer.ValueText!
+                    ), ct);
+                }
+
+                // 8) Кэшируем результат идемпотентности.
                 var response = new SubmitSurveyResponse
                 {
                     SubmissionId = ballot.Id,
@@ -274,7 +286,6 @@ namespace Surveys.Controllers
                 throw;
             }
         }
-
         /// <summary>
         /// O-06: GET /api/my-surveys — история отправленных анкет текущего студента.
         /// Доступно только роли student (1).

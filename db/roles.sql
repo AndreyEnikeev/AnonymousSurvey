@@ -95,3 +95,22 @@ GRANT INSERT ON audit_events TO notifications_service;
 GRANT SELECT (id, email, role_id, full_name) ON users TO notifications_service
 GRANT SELECT (id) ON audit_events TO notifications_service;
 GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq TO notifications_service;
+
+-- ============================================================
+-- СЕРВИС LLM-ОРКЕСТРАТОРА
+-- Записывает результаты классификации и логи.
+-- Не имеет доступа к анкетам и персональным данным.
+-- ============================================================
+GRANT CONNECT ON DATABASE survey_db TO llm_orchestrator;
+GRANT USAGE ON SCHEMA public TO llm_orchestrator;
+
+-- Сохраняет результаты классификации
+GRANT INSERT ON llm_classifications TO llm_orchestrator;
+-- SELECT (id) нужен для EF Core (RETURNING id)
+GRANT SELECT (id) ON llm_classifications TO llm_orchestrator;
+GRANT USAGE, SELECT ON SEQUENCE llm_classifications_id_seq TO llm_orchestrator;
+
+-- Пишет логи о падениях/успехах
+GRANT INSERT ON audit_events TO llm_orchestrator;
+GRANT SELECT (id) ON audit_events TO llm_orchestrator;
+GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq TO llm_orchestrator;

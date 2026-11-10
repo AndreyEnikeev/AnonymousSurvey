@@ -24,6 +24,7 @@ psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<-EOSQL
     CREATE ROLE surveys_service       LOGIN PASSWORD '${SURVEYS_DB_PASSWORD}';
     CREATE ROLE analytics_service     LOGIN PASSWORD '${ANALYTICS_DB_PASSWORD}';
     CREATE ROLE notifications_service LOGIN PASSWORD '${NOTIFICATIONS_DB_PASSWORD}';
+    CREATE ROLE llm_orchestrator WITH LOGIN PASSWORD '${LLM_DB_PASSWORD}';
 EOSQL
 
 echo "[init.sh] Применяем schema.sql..."

@@ -45,6 +45,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notifications", "services\N
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Analytics", "services\Analytics\Analytics.csproj", "{0C1675CD-7346-4144-A778-22013E77D7CF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LlmOrchestrator", "services\LlmOrchestrator\LlmOrchestrator.csproj", "{F067C5CD-669A-4678-83B6-5EA15F6CEDD0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -71,6 +73,10 @@ Global
 		{0C1675CD-7346-4144-A778-22013E77D7CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0C1675CD-7346-4144-A778-22013E77D7CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0C1675CD-7346-4144-A778-22013E77D7CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F067C5CD-669A-4678-83B6-5EA15F6CEDD0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F067C5CD-669A-4678-83B6-5EA15F6CEDD0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F067C5CD-669A-4678-83B6-5EA15F6CEDD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F067C5CD-669A-4678-83B6-5EA15F6CEDD0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -81,6 +87,7 @@ Global
 		{66AC5454-98E4-4CA7-BF46-96C027BC8708} = {BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}
 		{FBE5AC7D-B4BE-4DC5-80E8-78F362D7925E} = {BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}
 		{0C1675CD-7346-4144-A778-22013E77D7CF} = {BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}
+		{F067C5CD-669A-4678-83B6-5EA15F6CEDD0} = {BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0C2F6AD6-50F8-41EC-AE6B-F9D9B6111104}
