@@ -1,0 +1,83 @@
+﻿@* ============================================================
+   O-13 + O-05: Страница заполнения и отправки анкеты.
+   ============================================================ *@
+
+@page "{id:guid}"
+@model WebClient.Pages.Student.SurveyModel
+@{
+    ViewData["Title"] = Model.Survey?.Title ?? "Анкета";
+}
+
+<div class="mb-3">
+    <a asp-page="/Student/Surveys" class="btn btn-sm btn-outline-secondary">← Назад к списку</a>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+else if (Model.Survey != null)
+{
+    <h1 class="mb-4">@Model.Survey.Title</h1>
+
+    @if (Model.Survey.AlreadySubmitted)
+    {
+        <div class="alert alert-success">
+            <h4 class="alert-heading">Вы уже отправили эту анкету!</h4>
+            <p class="mb-0">Повторное заполнение невозможно. Спасибо за участие!</p>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <form method="post">
+                    @* Idempotency-Key: генерируется в OnGetAsync и прячется.
+                       Если пользователь дважды нажмёт "Отправить", сервер не создаст дубль. *@
+                    <input type="hidden" asp-for="IdempotencyKey" />
+
+                    @for (int i = 0; i < Model.Survey.Questions.Count; i++)
+                    {
+                        var q = Model.Survey.Questions[i];
+                        
+                        @* Скрытое поле для привязки ответа к вопросу.
+                           Имена полей строятся по индексу (Answers[0].QuestionId),
+                           чтобы Razor Pages корректно собрал List<AnswerItem>. *@
+                        <input type="hidden" name="Answers[@i].QuestionId" value="@q.QuestionId" />
+
+                        <div class="mb-4 p-3 bg-light rounded">
+                            <label class="form-label fw-bold mb-2">@(i + 1). @q.Text</label>
+
+                            @if (q.Type == "scale")
+                            {
+                                <div class="d-flex gap-3">
+                                    @foreach (var opt in q.Options ?? new List<int> { 1, 2, 3, 4, 5 })
+                                    {
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" 
+                                                   name="Answers[@i].Value" value="@opt" 
+                                                   id="q_@(i)_@opt" required />
+                                            <label class="form-check-label" for="q_@(i)_@opt">
+                                                @opt
+                                            </label>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (q.Type == "text")
+                            {
+                                <textarea class="form-control" name="Answers[@i].Value" rows="3" 
+                                          maxlength="2000" placeholder="Ваш комментарий..."></textarea>
+                                <div class="form-text">Необязательно. До 2000 символов.</div>
+                            }
+                        </div>
+                    }
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">Отправить анкету</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+}

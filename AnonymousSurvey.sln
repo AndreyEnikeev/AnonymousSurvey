@@ -10,6 +10,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Элементы решен
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		docker-compose.infra.yml = docker-compose.infra.yml
+		docker-compose.yml = docker-compose.yml
 		README.md = README.md
 	EndProjectSection
 EndProject
@@ -24,6 +25,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{3EC21390-54B6-4D98-A4AC-1B618C9D2763}"
 	ProjectSection(SolutionItems) = preProject
 		docs\discrepancies.md = docs\discrepancies.md
+		map.md = map.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "requests", "requests", "{B8C306E5-4FFA-4839-BF39-5C1754D03EBE}"
@@ -32,8 +34,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "requests", "requests", "{B8
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "services", "services", "{BEDC625A-44A5-4FC5-AD44-7BF3F546FD1E}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "web", "web", "{BE1C158B-96B4-42BB-9697-6D59273D10CC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Auth", "services\Auth\Auth.csproj", "{225B436F-8CC9-41C4-A232-34D1F7A4D538}"
 EndProject
@@ -46,6 +46,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Analytics", "services\Analytics\Analytics.csproj", "{0C1675CD-7346-4144-A778-22013E77D7CF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LlmOrchestrator", "services\LlmOrchestrator\LlmOrchestrator.csproj", "{F067C5CD-669A-4678-83B6-5EA15F6CEDD0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebClient", "WebClient\WebClient.csproj", "{BE84F92A-9636-49E2-B4E6-E050C3E96937}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -77,6 +79,10 @@ Global
 		{F067C5CD-669A-4678-83B6-5EA15F6CEDD0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F067C5CD-669A-4678-83B6-5EA15F6CEDD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F067C5CD-669A-4678-83B6-5EA15F6CEDD0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE84F92A-9636-49E2-B4E6-E050C3E96937}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE84F92A-9636-49E2-B4E6-E050C3E96937}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE84F92A-9636-49E2-B4E6-E050C3E96937}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE84F92A-9636-49E2-B4E6-E050C3E96937}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

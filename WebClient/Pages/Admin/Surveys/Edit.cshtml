@@ -1,0 +1,212 @@
+﻿@page "{id:guid?}"
+@model WebClient.Pages.Admin.Surveys.EditModel
+@{
+    ViewData["Title"] = Model.Id.HasValue ? "Редактирование анкеты" : "Создание анкеты";
+}
+
+<h1 class="mb-4">@ViewData["Title"]</h1>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+@if (Model.Dictionaries != null)
+{
+    <form method="post">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light">Основная информация</div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Период (только draft)</label>
+                        <select asp-for="PeriodId" class="form-select" required disabled="@(Model.Id.HasValue)">
+                            <option value="">-- Выберите --</option>
+                            @foreach (var p in Model.Dictionaries.DraftPeriods)
+                            {
+                                <option value="@p.Id">@p.Name</option>
+                            }
+                        </select>
+                        @if (Model.Id.HasValue)
+                        {
+                            <input type="hidden" asp-for="PeriodId" />
+                            <div class="form-text">Период нельзя изменить при редактировании.</div>
+                        }
+                    </div>
+
+                    @* 1. Сначала выбираем преподавателя *@
+                    <div class="col-md-4">
+                        <label class="form-label">Преподаватель</label>
+                        <select asp-for="TeacherId" id="selectTeacher" class="form-select" required>
+                            <option value="">-- Выберите --</option>
+                            @foreach (var t in Model.Dictionaries.Teachers)
+                            {
+                                <option value="@t.Id">@t.Name</option>
+                            }
+                        </select>
+                    </div>
+                    @* 2. Затем выбираем дисциплину (она отфильтруется скриптом) *@
+                    <div class="col-md-4">
+                        <label class="form-label">Дисциплина</label>
+                        <select asp-for="DisciplineId" id="selectDiscipline" class="form-select" required disabled>
+                            <option value="">-- Сначала выберите преподавателя --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <span>Вопросы анкеты</span>
+                <button type="button" id="btnAddQuestion" class="btn btn-sm btn-success">+ Добавить вопрос</button>
+            </div>
+            <div class="card-body" id="questions-container">
+                @for (int i = 0; i < Model.Questions.Count; i++)
+                {
+                    <div class="question-item border rounded p-3 mb-3 bg-white">
+                        <input type="hidden" name="Questions[@i].Id" value="@(Model.Questions[i].Id ?? 0)" class="q-id" />
+                        <div class="d-flex justify-content-between mb-2">
+                            <strong>Вопрос <span class="q-number">@(i + 1)</span></strong>
+                            <button type="button" class="btn btn-sm btn-outline-danger btn-remove">Удалить</button>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-9 mb-2">
+                                <input type="text" name="Questions[@i].Text" value="@Model.Questions[i].Text" class="form-control q-text" placeholder="Текст вопроса" required />
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <select name="Questions[@i].TypeId" class="form-select q-type">
+                                    <option value="1" selected="@(Model.Questions[i].TypeId == 1)">Шкала (1-5)</option>
+                                    <option value="2" selected="@(Model.Questions[i].TypeId == 2)">Текст</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <a asp-page="/Admin/Surveys/Index" class="btn btn-outline-secondary">Отмена</a>
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+        </div>
+    </form>
+    @section Scripts {
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const container = document.getElementById('questions-container');
+                const btnAdd = document.getElementById('btnAddQuestion');
+
+                // Функция пересчета индексов (чтобы ASP.NET Core правильно собрал List)
+                function reindex() {
+                    const items = container.querySelectorAll('.question-item');
+                    items.forEach((item, index) => {
+                        // Обновляем порядковый номер
+                        item.querySelector('.q-number').textContent = index + 1;
+
+                        // Обновляем атрибуты name для привязки к модели
+                        item.querySelector('.q-text').name = `Questions[${index}].Text`;
+                        item.querySelector('.q-type').name = `Questions[${index}].TypeId`;
+                        item.querySelector('.q-id').name = `Questions[${index}].Id`;
+                    });
+                }
+
+                // Добавление вопроса
+                btnAdd.addEventListener('click', function() {
+                    const index = container.querySelectorAll('.question-item').length;
+                    const html = `
+                        <div class="question-item border rounded p-3 mb-3 bg-white">
+                            <input type="hidden" name="Questions[${index}].Id" value="0" class="q-id" />
+                            <div class="d-flex justify-content-between mb-2">
+                                <strong>Вопрос <span class="q-number"></span></strong>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-remove">Удалить</button>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-9 mb-2">
+                                    <input type="text" name="Questions[${index}].Text" class="form-control q-text" placeholder="Текст вопроса" required />
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <select name="Questions[${index}].TypeId" class="form-select q-type">
+                                        <option value="1">Шкала (1-5)</option>
+                                        <option value="2">Текст</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>`;
+                    container.insertAdjacentHTML('beforeend', html);
+                    reindex();
+                });
+
+                // Удаление вопроса (делегирование событий)
+                container.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('btn-remove')) {
+                        if (container.querySelectorAll('.question-item').length > 1) {
+                            e.target.closest('.question-item').remove();
+                            reindex();
+                        } else {
+                            alert('В анкете должен быть хотя бы один вопрос.');
+                        }
+                    }
+                });
+
+                // =========================================================
+                // --- НОВАЯ Логика фильтрации дисциплин по преподавателю ---
+                // =========================================================
+                const teacherSelect = document.getElementById('selectTeacher');
+                const disciplineSelect = document.getElementById('selectDiscipline');
+                                // Получаем связи из C# (DTO) с принудительным camelCase для JS
+                const teacherDisciplinesMap = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dictionaries.TeacherDisciplines ?? new(), new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+                // Все доступные дисциплины в системе
+                const allDisciplines = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dictionaries.Disciplines, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+                // Текущая выбранная дисциплина (нужно для режима редактирования)
+                const currentDisciplineId = '@Model.DisciplineId';
+
+                function updateDisciplines() {
+                    const selectedTeacherId = teacherSelect.value;
+
+                    // Очищаем текущий список дисциплин
+                    disciplineSelect.innerHTML = '';
+
+                    if (!selectedTeacherId) {
+                        // Если препод не выбран, блокируем поле и показываем заглушку
+                        disciplineSelect.add(new Option('-- Сначала выберите преподавателя --', ''));
+                        disciplineSelect.disabled = true;
+                        return;
+                    }
+
+                    // Ищем, какие дисциплины ведет выбранный препод
+                    const mapping = teacherDisciplinesMap.find(m => m.teacherId.toLowerCase() === selectedTeacherId.toLowerCase());
+
+                    if (!mapping || !mapping.disciplineIds || mapping.disciplineIds.length === 0) {
+                        // Если у препода нет дисциплин
+                        disciplineSelect.add(new Option('-- У этого преподавателя нет дисциплин --', ''));
+                        disciplineSelect.disabled = true;
+                        return;
+                    }
+
+                    // Если дисциплины есть — разблокируем поле и добавляем пустую строку для выбора
+                    disciplineSelect.disabled = false;
+                    disciplineSelect.add(new Option('-- Выберите дисциплину --', ''));
+
+                    // Оставляем только те дисциплины, чей ID есть в списке препода
+                    allDisciplines.forEach(d => {
+                        if (mapping.disciplineIds.includes(d.id.toLowerCase())) {
+                            disciplineSelect.add(new Option(d.name, d.id));
+                        }
+                    });
+
+                    // Если мы находимся в режиме редактирования, восстанавливаем выбранную ранее дисциплину
+                    if (currentDisciplineId && currentDisciplineId !== '00000000-0000-0000-0000-000000000000') {
+                        disciplineSelect.value = currentDisciplineId;
+                    }
+                }
+
+                // Вешаем обработчик на изменение преподавателя
+                teacherSelect.addEventListener('change', updateDisciplines);
+
+                // Запускаем при загрузке страницы (на случай, если мы в режиме редактирования)
+                updateDisciplines();
+            });
+        </script>
+    }
+}

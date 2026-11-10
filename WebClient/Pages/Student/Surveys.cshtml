@@ -1,0 +1,73 @@
+﻿@* ============================================================
+   O-04: список активных анкет для студента.
+   Источник данных — GET /api/surveys/active (Surveys C-04) через Gateway.
+   Загружается в OnGetAsync модели, здесь только рендер.
+   ============================================================ *@
+
+@page
+@model WebClient.Pages.Student.SurveysModel
+@{
+    ViewData["Title"] = "Активные анкеты";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Активные анкеты</h1>
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    <a asp-page="/Student/MySurveys" class="btn btn-outline-secondary">История отправленных</a>
+</div>
+
+@* Сообщение об ошибке загрузки — если сеть недоступна или сервер вернул ошибку *@
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+@* Случай «нет активных анкет» — не ошибка, а нормальное состояние,
+   например, между периодами анкетирования *@
+@if (Model.Surveys is { Count: 0 } && string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-info">
+        Сейчас нет активных анкет. Проверьте позже — новые появятся,
+        когда администратор откроет период анкетирования.
+    </div>
+}
+else if (Model.Surveys is { Count: > 0 })
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Период</th>
+                    <th>Анкета</th>
+                    <th class="text-end" style="width: 220px;">Действие</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.Surveys)
+                {
+                    <tr>
+                        <td>@s.PeriodName</td> @* Выводим человекочитаемое название *@
+                        <td>@s.Title</td>
+                        <td class="text-end">
+                            @if (s.AlreadySubmitted)
+                            {
+                                <span class="badge bg-success">Отправлено</span>
+                            }
+                            else
+                            {
+                                <a asp-page="/Student/Survey" asp-route-id="@s.SurveyId"
+                                   class="btn btn-primary btn-sm">Заполнить</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

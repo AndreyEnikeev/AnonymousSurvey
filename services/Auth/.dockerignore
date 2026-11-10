@@ -1,0 +1,16 @@
+# Исключаем результаты сборки — они не нужны в контейнере
+bin/
+obj/
+
+# Исключаем файлы Visual Studio
+.vs/
+*.user
+*.suo
+
+# Исключаем сам Dockerfile и .dockerignore (они не нужны внутри образа)
+Dockerfile
+.dockerignore
+
+# Исключаем временные файлы
+*.tmp
+*.log

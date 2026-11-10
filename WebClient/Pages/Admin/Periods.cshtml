@@ -1,0 +1,136 @@
+﻿@* ============================================================
+   O-08 + O-09: Управление периодами анкетирования.
+   
+   Доступно только роли admin (3).
+   Список периодов, фильтр по статусу и форма смены статуса.
+   ============================================================ *@
+
+@page
+@model WebClient.Pages.Admin.PeriodsModel
+@{
+    ViewData["Title"] = "Периоды анкетирования";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Периоды анкетирования</h1>
+</div>
+
+@* Флеш-сообщения (переживают редирект) *@
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+@* Форма создания нового периода *@
+<div class="card mb-4 shadow-sm border-primary">
+    <div class="card-header bg-primary text-white">Создать новый период (Черновик)</div>
+    <div class="card-body">
+        <form method="post" asp-page-handler="CreatePeriod" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Название периода</label>
+                <input asp-for="NewPeriodName" class="form-control" placeholder="Например, Весна 2027" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Дата начала</label>
+                <input asp-for="NewStartDate" type="date" class="form-control" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Дата окончания</label>
+                <input asp-for="NewEndDate" type="date" class="form-control" required />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Создать</button>
+            </div>
+        </form>
+    </div>
+</div>
+@* Фильтр по статусу. Отправляется GET-запросом (безопасный метод). *@
+<div class="card mb-4 shadow-sm">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-center">
+            <div class="col-auto">
+                <label class="col-form-label">Фильтр по статусу:</label>
+            </div>
+            <div class="col-auto">
+                <select name="statusFilter" class="form-select" asp-items="@(new SelectList(new[] {
+                    new { Value = "", Text = "Все" },
+                    new { Value = "draft", Text = "Черновик" },
+                    new { Value = "open", Text = "Открыт" },
+                    new { Value = "closed", Text = "Закрыт" },
+                    new { Value = "archived", Text = "Архив" }
+                }, "Value", "Text", Model.StatusFilter))">
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Применить</button>
+            </div>
+        </form>
+    </div>
+</div>
+@if (Model.Periods == null || !Model.Periods.Any())
+{
+    <div class="alert alert-info">Периоды не найдены.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Даты</th>
+                    <th>Статус</th>
+                    <th class="text-end" style="width: 300px;">Действие</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model.Periods)
+                {
+                    <tr>
+                        <td>@p.Name</td>
+                        <td>@p.StartDate.ToString("dd.MM.yyyy") — @p.EndDate.ToString("dd.MM.yyyy")</td>
+                        <td>
+                            @* Красим бейджи в зависимости от статуса *@
+                            <span class="badge @(p.Status switch {
+                                "open" => "bg-success",
+                                "closed" => "bg-secondary",
+                                "archived" => "bg-dark",
+                                _ => "bg-warning text-dark"
+                            })">@p.Status</span>
+                        </td>
+                        <td class="text-end">
+                            @* Форма O-09: смена статуса.
+                               Отправляет POST на ту же страницу.
+                               Внутри формы — селект с новым статусом. *@
+                            <form method="post" asp-page-handler="UpdateStatus" class="d-flex justify-content-end">
+                                <input type="hidden" name="periodId" value="@p.PeriodId" />
+                                
+                                <select name="newStatus" class="form-select form-select-sm me-2" style="width: 130px;">
+                                    @if (p.Status != "open") { <option value="open">Открыть</option> }
+                                    @if (p.Status != "closed") { <option value="closed">Закрыть</option> }
+                                    @if (p.Status != "archived") { <option value="archived">В архив</option> }
+                                </select>
+                                
+                                <button type="submit" class="btn btn-sm btn-outline-primary">ОК</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

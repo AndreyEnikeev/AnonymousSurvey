@@ -64,19 +64,29 @@ namespace Auth.Services
 
         /// <summary>
         /// Генерирует новый JWT access-токен для аутентифицированного пользователя.
+        ///
+        /// Состав claims:
+        ///   sub           — userId (используется Gateway и всеми сервисами);
+        ///   unique_name   — логин (для аудита);
+        ///   role          — roleId (используется для [Authorize(Roles="...")]);
+        ///   full_name     — ФИО (только для отображения в UI, см. D-15).
         /// </summary>
         /// <param name="userId">Уникальный идентификатор пользователя (GUID).</param>
-        /// <param name="roleId">Идентификатор роли пользователя (например, 1 для студента).</param>
+        /// <param name="roleId">Идентификатор роли пользователя.</param>
         /// <param name="login">Логин пользователя.</param>
+        /// <param name="fullName">ФИО для отображения в интерфейсе.</param>
         /// <returns>Строка с подписанным JWT-токеном.</returns>
-        public string GenerateAccessToken(Guid userId, short roleId, string login)
+        public string GenerateAccessToken(Guid userId, short roleId, string login, string fullName)
         {
             // Утверждения (Claims) — это данные, которые мы кладем внутрь токена.
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
                 new Claim(JwtRegisteredClaimNames.UniqueName, login),
-                new Claim(ClaimTypes.Role, roleId.ToString()) // Роль нужна для авторизации в Gateway
+                new Claim(ClaimTypes.Role, roleId.ToString()),
+                // Короткое имя "full_name" выбрано намеренно: ClaimTypes.Name в JWT
+                // сериализуется как длинный URI и усложняет чтение на клиенте.
+                new Claim("full_name", fullName ?? string.Empty)
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_signingKey));
@@ -86,7 +96,7 @@ namespace Auth.Services
                 issuer: _issuer,
                 audience: _audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(_accessTtlMinutes), // Используем значение из конфигурации
+                expires: DateTime.UtcNow.AddMinutes(_accessTtlMinutes),
                 signingCredentials: creds
             );
 
@@ -110,6 +120,38 @@ namespace Auth.Services
             await _redisDb.StringSetAsync($"refresh:{refreshToken}", userId.ToString(), TimeSpan.FromDays(7));
 
             return refreshToken;
+        }
+
+        /// <summary>
+        /// Ищет владельца Refresh-токена в Redis.
+        /// Используется в эндпоинте POST /api/auth/refresh (см. discrepancies.md, D-13):
+        /// клиент приходит с refresh-токеном, и по нему нужно понять, какому пользователю
+        /// выдать новую пару токенов.
+        /// 
+        /// Если ключ отсутствует (токен истёк, отозван или никогда не выдавался) —
+        /// возвращает null. Метод не бросает исключений: недействительный токен —
+        /// это штатная ситуация, а не сбой.
+        /// </summary>
+        /// <param name="refreshToken">Строка Refresh-токена из запроса.</param>
+        /// <returns>Идентификатор пользователя или null, если токен недействителен.</returns>
+        public async Task<Guid?> GetUserIdByRefreshTokenAsync(string refreshToken)
+        {
+            // Пустой токен — сразу отказ, не ходим в Redis.
+            if (string.IsNullOrWhiteSpace(refreshToken))
+                return null;
+
+            // Читаем значение по ключу refresh:{token}. Redis вернёт RedisValue с HasValue = false,
+            // если ключа нет (истёк TTL, отозван через Revoke или токен поддельный).
+            var value = await _redisDb.StringGetAsync($"refresh:{refreshToken}");
+            if (!value.HasValue)
+                return null;
+
+            // В значении лежит userId строкой. Если по какой-то причине там мусор —
+            // считаем токен недействительным, а не падаем с FormatException.
+            if (!Guid.TryParse(value.ToString(), out var userId))
+                return null;
+
+            return userId;
         }
 
         /// <summary>

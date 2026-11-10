@@ -1,5 +1,6 @@
 using Auth.DataDb;
 using Auth.Services;
+using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -25,7 +26,7 @@ namespace Auth
 
             // 2. ПРОВЕРКА JWT ВНУТРИ AUTH (defense in depth)
             var jwtKey = builder.Configuration["Jwt:SigningKey"]
-                ?? throw new InvalidOperationException("Jwt:SigningKey не настроен в User Secrets");
+                ?? throw new InvalidOperationException("Jwt:SigningKey не настроен (User Secrets или Environment)");
 
             builder.Services
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -54,7 +55,7 @@ namespace Auth
                 options.UseNpgsql(connectionString));
 
             var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
-                ?? throw new InvalidOperationException("ConnectionStrings:Redis не настроен в User Secrets");
+                ?? throw new InvalidOperationException("ConnectionStrings:Redis не настроен (User Secrets или Environment)");
 
             // Настраиваем параметры подключения к Redis.
             var redisOptions = StackExchange.Redis.ConfigurationOptions.Parse(redisConnectionString);
@@ -67,18 +68,40 @@ namespace Auth
             builder.Services.AddScoped<PasswordHasher>();
             builder.Services.AddScoped<TokenService>();
 
+            // ================================================================
+            // 5. MASS TRANSIT (публикация событий в RabbitMQ)
+            // ================================================================
+            builder.Services.AddMassTransit(x =>
+            {
+                x.UsingRabbitMq((context, cfg) =>
+                {
+                    var rabbitConnectionString = builder.Configuration.GetConnectionString("RabbitMq")
+                    ?? throw new InvalidOperationException("ConnectionStrings:RabbitMq не настроен (User Secrets или Environment)");
+
+                    cfg.Host(new Uri(rabbitConnectionString), h =>
+                    {
+                        // Heartbeat каждые 30 секунд — иначе брокер закрывает простаивающее TCP-соединение
+                        h.Heartbeat(TimeSpan.FromSeconds(30));
+                    });
+                });
+            });
+
             var app = builder.Build();
 
-#if DEBUG
-            // 5. АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ ПАРОЛЕЙ
-            // Проверяем базу: если там лежат заглушки из seed.sql, заменяем их на реальные хэши.
+            // 6. АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ ПАРОЛЕЙ (Seed)
+            // ВАЖНО: убрано #if DEBUG, иначе при сборке в Release (Docker) пароли не захешируются.
+            // Метод сам проверяет наличие заглушек и выходит, если их нет.
+            SeedPasswordsAutomatically(app);
+
+            // 7. HTTP-КОНВЕЙЕР (порядок критичен)
+            // В Docker контейнер общается по HTTP (внутри изолированной сети),
+            // поэтому UseHttpsRedirection применяем ТОЛЬКО в локальной разработке.
+            // В Production (Docker) TLS-терминация выполняется на Gateway (см. D-03, D-21).
             if (app.Environment.IsDevelopment())
             {
-                SeedPasswordsAutomatically(app);
+                app.UseHttpsRedirection();
             }
-#endif
-            // 6. HTTP-КОНВЕЙЕР (порядок критичен)
-            app.UseHttpsRedirection();
+
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
@@ -86,55 +109,85 @@ namespace Auth
             app.Run();
         }
 
-#if DEBUG
         /// <summary>
         /// Проверяет наличие "заглушек" паролей в БД и автоматически генерирует для них Argon2id-хэши.
-        /// Выполняется только при запуске, не требует ручного вмешательства.
+        /// 
+        /// Устойчив к ситуации "Postgres ещё не готов принимать соединения":
+        /// делаем несколько попыток с паузой, и только потом сдаёмся.
+        /// Это позволяет запускать Auth раньше контейнера postgres — 
+        /// сервис подождёт инициализации, а не упадёт с SocketException.
         /// </summary>
         private static void SeedPasswordsAutomatically(WebApplication app)
         {
             using var scope = app.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var hasher = scope.ServiceProvider.GetRequiredService<PasswordHasher>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-            // Проверяем, есть ли хотя бы один пользователь с "заглушкой"
-            bool hasPlaceholders = db.Users.Any(u => u.PasswordHash.StartsWith("PLACEHOLDER_"));
+            // 5 попыток с интервалом 10 секунд = до 50 секунд ожидания.
+            // Этого достаточно, чтобы дождаться старта Postgres в Docker Compose.
+            const int maxAttempts = 5;
+            const int delaySeconds = 10;
 
-            if (!hasPlaceholders)
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                // Если заглушек нет, значит пароли уже сгенерированы, ничего не делаем.
-                return;
-            }
-
-            Console.WriteLine("=== Обнаружены заглушки паролей. Генерация реальных Argon2id-хэшей... ===");
-
-            var testUsers = new Dictionary<string, string>
-            {
-                { "student1", "Student1!Pass" },
-                { "student2", "Student2!Pass" },
-                { "student3", "Student3!Pass" },
-                { "teacher1", "Teacher1!Pass" },
-                { "teacher2", "Teacher2!Pass" },
-                { "admin1",   "Admin1!Pass"   },
-                { "tech1",    "Tech1!Pass"    }
-            };
-
-            foreach (var kvp in testUsers)
-            {
-                var login = kvp.Key;
-                var password = kvp.Value;
-
-                var user = db.Users.FirstOrDefault(u => u.Login == login);
-                if (user != null)
+                try
                 {
-                    user.PasswordSalt = hasher.GenerateSalt();
-                    user.PasswordHash = hasher.HashPassword(password, user.PasswordSalt);
+                    // Проверяем, есть ли хотя бы один пользователь с "заглушкой"
+                    bool hasPlaceholders = db.Users.Any(u => u.PasswordHash.StartsWith("PLACEHOLDER_"));
+
+                    if (!hasPlaceholders)
+                    {
+                        // Заглушек нет — пароли уже сгенерированы, выходим.
+                        return;
+                    }
+
+                    Console.WriteLine("=== Обнаружены заглушки паролей. Генерация реальных Argon2id-хэшей... ===");
+
+                    var testUsers = new Dictionary<string, string>
+                    {
+                        { "student1", "Student1!Pass" },
+                        { "student2", "Student2!Pass" },
+                        { "student3", "Student3!Pass" },
+                        { "teacher1", "Teacher1!Pass" },
+                        { "teacher2", "Teacher2!Pass" },
+                        { "admin1",   "Admin1!Pass"   },
+                        { "tech1",    "Tech1!Pass"    }
+                    };
+
+                    foreach (var kvp in testUsers)
+                    {
+                        var user = db.Users.FirstOrDefault(u => u.Login == kvp.Key);
+                        if (user != null)
+                        {
+                            user.PasswordSalt = hasher.GenerateSalt();
+                            user.PasswordHash = hasher.HashPassword(kvp.Value, user.PasswordSalt);
+                        }
+                    }
+
+                    db.SaveChanges();
+                    Console.WriteLine("=== Все хэши успешно сгенерированы и сохранены в БД! ===");
+                    return; // успех — выходим из цикла
+                }
+                catch (Exception ex) when (attempt < maxAttempts)
+                {
+                    // Логируем и ждём перед следующей попыткой.
+                    logger.LogWarning(ex,
+                        "Попытка {Attempt}/{Max} подключиться к БД для seed паролей не удалась. " +
+                        "Ждём {Delay} сек и пробуем снова.",
+                        attempt, maxAttempts, delaySeconds);
+                    Thread.Sleep(TimeSpan.FromSeconds(delaySeconds));
+                }
+                catch (Exception ex)
+                {
+                    // Последняя попытка тоже упала — логируем и НЕ валим приложение.
+                    logger.LogError(ex,
+                        "Не удалось выполнить seed паролей после {Max} попыток. " +
+                        "Сервис запустится, но пароли останутся заглушками — " +
+                        "вход в систему будет невозможен до успешного seed.",
+                        maxAttempts);
                 }
             }
-
-            db.SaveChanges();
-            Console.WriteLine("=== Все хэши успешно сгенерированы и сохранены в БД! ===");
         }
-#endif
     }
 }

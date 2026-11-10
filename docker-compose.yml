@@ -1,0 +1,278 @@
+# ==============================================================================
+# Полный Docker Compose для проекта AnonymousSurvey
+# 
+# Запуск: docker compose up -d --build
+# Остановка: docker compose down
+# Сброс БД: docker compose down -v && docker compose up -d
+# ==============================================================================
+
+services:
+
+  # ============================================================================
+  # ИНФРАСТРУКТУРА
+  # ============================================================================
+  
+  postgres:
+    image: postgres:16-alpine
+    container_name: anon-survey-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: survey_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
+      SURVEYS_DB_PASSWORD: ${SURVEYS_DB_PASSWORD}
+      ANALYTICS_DB_PASSWORD: ${ANALYTICS_DB_PASSWORD}
+      NOTIFICATIONS_DB_PASSWORD: ${NOTIFICATIONS_DB_PASSWORD}
+      LLM_DB_PASSWORD: ${LLM_DB_PASSWORD}
+      TZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+      - ./db/schema.sql:/db/schema.sql:ro
+      - ./db/roles.sql:/db/roles.sql:ro
+      - ./db/seed.sql:/db/seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d survey_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: anon-survey-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: anon-survey-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: bitnamilegacy/minio:2025.4.22
+    container_name: anon-survey-minio
+    restart: unless-stopped
+    command: server /bitnami/minio/data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/bitnami/minio/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: bitnamilegacy/minio-client:latest
+    container_name: anon-survey-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/${MINIO_BUCKET_REPORTS} &&
+      echo 'MinIO bucket ready'
+      "
+    restart: "no"
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: anon-survey-mailhog
+    restart: unless-stopped
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${MAILHOG_HTTP_PORT:-8025}:8025"
+
+  # ============================================================================
+  # C# МИКРОСЕРВИСЫ
+  # ============================================================================
+
+  auth:
+    build:
+      context: ./services/Auth
+      dockerfile: Dockerfile
+    container_name: anon-survey-auth
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Jwt__SigningKey=${JWT_SIGNING_KEY}
+      - Argon2__Pepper=${ARGON2_PEPPER}
+      - ConnectionStrings__AuthDb=Host=postgres;Port=5432;Database=survey_db;Username=auth_service;Password=${AUTH_DB_PASSWORD}
+      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD},abortConnect=false
+      - ConnectionStrings__RabbitMq=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: ./services/Gateway
+      dockerfile: Dockerfile
+    container_name: anon-survey-gateway
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Jwt__SigningKey=${JWT_SIGNING_KEY}
+      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD},abortConnect=false
+      # Переопределение адресов YARP (localhost -> имена контейнеров)
+      - ReverseProxy__Clusters__auth-cluster__Destinations__auth-1__Address=http://auth:8080/
+      - ReverseProxy__Clusters__surveys-cluster__Destinations__surveys-1__Address=http://surveys:8080/
+      - ReverseProxy__Clusters__analytics-cluster__Destinations__analytics-1__Address=http://analytics:8080/
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+      - auth
+      - surveys
+      - analytics
+
+  surveys:
+    build:
+      context: ./services/Surveys
+      dockerfile: Dockerfile
+    container_name: anon-survey-surveys
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Jwt__SigningKey=${JWT_SIGNING_KEY}
+      - ConnectionStrings__SurveysDb=Host=postgres;Port=5432;Database=survey_db;Username=surveys_service;Password=${SURVEYS_DB_PASSWORD}
+      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD},abortConnect=false
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__Username=${RABBITMQ_USER}
+      - RabbitMq__Password=${RABBITMQ_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  analytics:
+    build:
+      context: ./services/Analytics
+      dockerfile: Dockerfile
+    container_name: anon-survey-analytics
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Jwt__SigningKey=${JWT_SIGNING_KEY}
+      - Jwt__Issuer=anon-survey
+      - Jwt__Audience=anon-survey-client
+      - ConnectionStrings__AnalyticsDb=Host=postgres;Port=5432;Database=survey_db;Username=analytics_service;Password=${ANALYTICS_DB_PASSWORD}
+      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD},abortConnect=false
+      - MinIO__Endpoint=http://minio:9000
+      - MinIO__AccessKey=${MINIO_ROOT_USER}
+      - MinIO__SecretKey=${MINIO_ROOT_PASSWORD}
+      - MinIO__BucketName=${MINIO_BUCKET_REPORTS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  llm-orchestrator:
+    build:
+      context: ./services/LlmOrchestrator
+      dockerfile: Dockerfile
+    container_name: anon-survey-llm
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__LlmDb=Host=postgres;Port=5432;Database=survey_db;Username=llm_orchestrator;Password=${LLM_DB_PASSWORD}
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__VirtualHost=/
+      - RabbitMq__Username=${RABBITMQ_USER}
+      - RabbitMq__Password=${RABBITMQ_PASSWORD}
+      - LlmProvider__ApiUrl=http://localhost:9999/api/classify
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  notifications:
+    build:
+      context: ./services/Notifications
+      dockerfile: Dockerfile
+    container_name: anon-survey-notifications
+    restart: unless-stopped
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - ConnectionStrings__NotificationsDb=Host=postgres;Port=5432;Database=survey_db;Username=notifications_service;Password=${NOTIFICATIONS_DB_PASSWORD}
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__VirtualHost=/
+      - RabbitMq__Username=${RABBITMQ_USER}
+      - RabbitMq__Password=${RABBITMQ_PASSWORD}
+      - Smtp__Host=mailhog
+      - Smtp__Port=1025
+      - Smtp__FromAddress=noreply@anon-survey.local
+      - Smtp__FromName=AnonymousSurvey
+      - Smtp__UseSsl=false
+      - WebClient__BaseUrl=http://localhost:5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+
+  webclient:
+    build:
+      context: ./WebClient
+      dockerfile: Dockerfile
+    container_name: anon-survey-webclient
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Redis__ConnectionString=redis:6379,password=${REDIS_PASSWORD},abortConnect=false
+      - Gateway__BaseUrl=http://gateway:8080/
+    ports:
+      - "5000:8080"
+    depends_on:
+      - redis
+      - gateway
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  minio_data:

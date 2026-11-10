@@ -17,5 +17,12 @@
 
         /// <summary>Отправлял ли текущий студент эту анкету.</summary>
         public bool AlreadySubmitted { get; init; }
+
+        /// <summary>
+        /// Название периода анкетирования (например, "Осень 2026").
+        /// Расширение контракта O-04/O-06 для удобства отображения (D-17).
+        /// </summary>
+        public string PeriodName { get; init; } = string.Empty;
+
     }
 }

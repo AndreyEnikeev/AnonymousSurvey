@@ -57,9 +57,17 @@ namespace Analytics
                        .UseSnakeCaseNamingConvention()); // Маппинг PascalCase -> snake_case
 
             // 4. ПОДКЛЮЧЕНИЕ К REDIS
-            // Redis используется как кэш для агрегированных отчетов (O-07).
+            var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
+                ?? throw new InvalidOperationException("ConnectionStrings:Redis не настроен (User Secrets или Environment)");
+
+            // Настраиваем параметры подключения к Redis.
+            // abortConnect=false (AbortOnConnectFail) критически важен для Docker:
+            // он позволяет сервису запуститься, даже если Redis еще не готов, и переподключиться позже.
+            var redisOptions = StackExchange.Redis.ConfigurationOptions.Parse(redisConnectionString);
+            redisOptions.AbortOnConnectFail = false;
+
             builder.Services.AddSingleton<IConnectionMultiplexer>(
-                ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
+                ConnectionMultiplexer.Connect(redisOptions));
 
             // 5. РЕГИСТРАЦИЯ НАШИХ СЕРВИСОВ
             // MinioService будет жить всё время работы приложения (Singleton).

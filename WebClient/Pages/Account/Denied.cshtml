@@ -1,0 +1,13 @@
+﻿@page
+@model WebClient.Pages.Account.DeniedModel
+@{
+    ViewData["Title"] = "Доступ запрещён";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 text-center">
+        <h1>403 — доступ запрещён</h1>
+        <p class="text-muted">У вашей учётной записи недостаточно прав для этой страницы.</p>
+        <a asp-page="/Index" class="btn btn-primary">На главную</a>
+    </div>
+</div>

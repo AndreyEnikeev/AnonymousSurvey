@@ -1,6 +1,8 @@
 ﻿using Auth.DataDb;
 using Auth.Models;
 using Auth.Services;
+using Auth.Contracts;
+using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
@@ -31,13 +33,24 @@ namespace Auth.Controllers
         private readonly TokenService _tokenService;
 
         /// <summary>
-        /// Конструктор контроллера. ASP.NET Core внедряет зависимости автоматически.
+        /// Публикатор событий в RabbitMQ. Используется для оповещения
+        /// сервиса Notifications о запросе восстановления пароля.
         /// </summary>
-        public AuthController(AppDbContext db, PasswordHasher passwordHasher, TokenService tokenService)
+        private readonly IPublishEndpoint _publishEndpoint;
+
+        /// <summary>
+        /// Конструктор. Зависимости внедряются через DI.
+        /// </summary>
+        public AuthController(
+            AppDbContext db,
+            PasswordHasher passwordHasher,
+            TokenService tokenService,
+            IPublishEndpoint publishEndpoint)
         {
             _db = db;
             _passwordHasher = passwordHasher;
             _tokenService = tokenService;
+            _publishEndpoint = publishEndpoint;
         }
 
         /// <summary>
@@ -61,12 +74,73 @@ namespace Auth.Controllers
                 return Unauthorized(new { message = "Неверный логин или пароль" });
             }
 
-            var accessToken = _tokenService.GenerateAccessToken(user.Id, user.RoleId, user.Login);
+            var accessToken = _tokenService.GenerateAccessToken(user.Id, user.RoleId, user.Login, user.FullName);
             var refreshToken = await _tokenService.GenerateRefreshTokenAsync(user.Id);
 
             await LogAuditEvent(user.Id, "login_success");
 
             return Ok(new { accessToken, refreshToken });
+        }/// <summary>
+         /// Обновление пары токенов (access + refresh) по действующему refresh-токену.
+         /// 
+         /// Отдельной операцией в ЛР2 не описано (см. discrepancies.md, D-13),
+         /// но необходимо: O-01 выдаёт пару, а без этого метода refresh-токен
+         /// невозможно применить при истечении access-токена.
+         /// 
+         /// Механика (refresh token rotation):
+         ///  1) Находим userId по refresh-токену в Redis.
+         ///  2) Проверяем, что пользователь ещё существует в БД.
+         ///  3) Отзываем СТАРЫЙ refresh-токен (одноразовое использование).
+         ///  4) Генерируем новую пару access + refresh.
+         ///  5) Пишем событие в audit_events.
+         /// 
+         /// Коды ответа:
+         ///  200 — новая пара выдана;
+         ///  401 — токен пуст, отсутствует в Redis, истёк или пользователь удалён.
+         /// </summary>
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
+        {
+            // 1) Минимальная валидация тела запроса.
+            if (string.IsNullOrWhiteSpace(request.RefreshToken))
+            {
+                await LogAuditEvent(null, "refresh_failed", "Пустой refresh-токен");
+                return Unauthorized(new { message = "Refresh-токен отсутствует." });
+            }
+
+            // 2) Ищем владельца токена. Метод TokenService вернёт null,
+            //    если токена нет в Redis или его TTL истёк.
+            var userId = await _tokenService.GetUserIdByRefreshTokenAsync(request.RefreshToken);
+            if (userId is null)
+            {
+                await LogAuditEvent(null, "refresh_failed", "Недействительный refresh-токен");
+                return Unauthorized(new { message = "Недействительный refresh-токен." });
+            }
+
+            // 3) Пользователь мог быть удалён после входа — тогда обновлять нельзя.
+            var user = await _db.Users.FindAsync(userId.Value);
+            if (user is null)
+            {
+                // Старый токен всё равно отзываем, чтобы не висел в Redis.
+                await _tokenService.RevokeRefreshTokenAsync(request.RefreshToken);
+                await LogAuditEvent(userId, "refresh_failed", "Пользователь не найден в БД");
+                return Unauthorized(new { message = "Пользователь не найден." });
+            }
+
+            // 4) Ротация: отзываем старый refresh-токен ДО выдачи нового.
+            //    Именно этот шаг делает обновление одноразовым —
+            //    повторный запрос с тем же токеном упадёт с 401.
+            await _tokenService.RevokeRefreshTokenAsync(request.RefreshToken);
+
+            // 5) Генерируем новую пару (те же фабрики, что и в Login).
+            var newAccessToken = _tokenService.GenerateAccessToken(user.Id, user.RoleId, user.Login, user.FullName);
+            var newRefreshToken = await _tokenService.GenerateRefreshTokenAsync(user.Id);
+
+            // 6) Фиксируем успех в журнале аудита.
+            await LogAuditEvent(user.Id, "refresh_success");
+
+            // 7) Формат ответа совпадает с O-01 — клиенту удобно работать единообразно.
+            return Ok(new { accessToken = newAccessToken, refreshToken = newRefreshToken });
         }
 
         /// <summary>
@@ -118,12 +192,16 @@ namespace Auth.Controllers
             await _db.SaveChangesAsync();
             await LogAuditEvent(user.Id, "password_reset_requested");
 
-            // В реальности здесь мы бы отправили email через SMTP (на Этапе 4 мы это сделаем).
-            // Пока выводим в консоль, чтобы вы могли протестировать.
-            Console.WriteLine("==================================================");
-            Console.WriteLine($"СБРОС ПАРОЛЯ ДЛЯ {user.Login}");
-            Console.WriteLine($"Токен: {resetToken}");
-            Console.WriteLine("==================================================");
+            // Публикуем событие в RabbitMQ. Сервис Notifications (C-07) получит его
+            // и отправит письмо через MailHog. Возвращаем клиенту тот же нейтральный
+            // ответ, что и для несуществующего пользователя — защита от перебора базы.
+            await _publishEndpoint.Publish(new PasswordResetRequested(
+                UserId: user.Id,
+                Email: user.Email,
+                FullName: user.FullName,
+                ResetToken: resetToken,
+                ExpiresAt: DateTime.UtcNow.AddMinutes(15)
+            ));
 
             return Ok(new { message = "Если пользователь существует, письмо отправлено." });
         }

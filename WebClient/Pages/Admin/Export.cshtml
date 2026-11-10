@@ -1,0 +1,63 @@
+﻿@page
+@model WebClient.Pages.Admin.ExportModel
+@{
+    ViewData["Title"] = "Выгрузка отчетов";
+}
+
+<h1 class="mb-4">Выгрузка отчётов</h1>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+@if (Model.ExportResult != null)
+{
+    @* Блок успешного формирования файла *@
+    <div class="card shadow-sm border-success mb-4">
+        <div class="card-header bg-success text-white">
+            Отчёт успешно сформирован
+        </div>
+        <div class="card-body">
+            <p>Файл готов к скачиванию. Ссылка действительна до: <strong>@Model.ExportResult.ExpiresAt.ToLocalTime().ToString("HH:mm:ss")</strong></p>
+            <a href="@Model.ExportResult.DownloadUrl" class="btn btn-success btn-lg" target="_blank">
+                ⬇ Скачать файл (Excel)
+            </a>
+            <a asp-page="/Admin/Export" class="btn btn-outline-secondary btn-lg ms-2">
+                Сформировать новый
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    @* Форма запроса выгрузки *@
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <p class="text-muted">
+                Выберите период, за который нужно сформировать сводный отчёт.
+                Каждая анкета будет выгружена на отдельный лист Excel.
+            </p>
+
+            <form method="post">
+                <input type="hidden" asp-for="IdempotencyKey" />
+
+                <div class="mb-3">
+                    <label asp-for="SelectedPeriodId" class="form-label">Период анкетирования</label>
+                    <select asp-for="SelectedPeriodId" class="form-select">
+                        <option value="">-- Выберите период --</option>
+                        @if (Model.Periods != null)
+                        {
+                            foreach (var p in Model.Periods)
+                            {
+                                <option value="@p.PeriodId">@p.Name (@p.Status)</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Сформировать отчёт</button>
+            </form>
+        </div>
+    </div>
+}

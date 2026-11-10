@@ -23,7 +23,7 @@ namespace Gateway
             // ==========================================================
             // Параметры (Issuer, Audience, SigningKey) ДОЛЖНЫ совпадать с Auth.
             var jwtKey = builder.Configuration["Jwt:SigningKey"]
-                ?? throw new InvalidOperationException("Jwt:SigningKey не настроен в User Secrets");
+                ?? throw new InvalidOperationException("Jwt:SigningKey не настроен (User Secrets или Environment)");
 
             builder.Services
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -50,7 +50,7 @@ namespace Gateway
             // 2. Redis — для распределённого Rate Limiting
             // ==========================================================
             var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
-                ?? throw new InvalidOperationException("ConnectionStrings:Redis не настроен в User Secrets");
+                ?? throw new InvalidOperationException("ConnectionStrings:Redis не настроен (User Secrets или Environment)");
 
             // Настраиваем параметры подключения к Redis.
             // abortConnect=false (AbortOnConnectFail) критически важен:
@@ -65,6 +65,8 @@ namespace Gateway
             // ==========================================================
             // 3. YARP: маршруты и кластеры из appsettings.json
             // ==========================================================
+            // В Docker адреса из appsettings.json переопределяются
+            // через переменные окружения в docker-compose.yml (см. A2).
             builder.Services
                 .AddReverseProxy()
                 .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
@@ -74,7 +76,12 @@ namespace Gateway
             // ==========================================================
             // 4. HTTP-конвейер (порядок критичен)
             // ==========================================================
-            app.UseHttpsRedirection();
+            // В Docker контейнер общается по HTTP (внутри изолированной сети),
+            // поэтому UseHttpsRedirection применяем ТОЛЬКО в локальной разработке.
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseHttpsRedirection();
+            }
 
             // 1) Аутентификация — «кто ты». Невалидный/просроченный токен ? 401.
             app.UseAuthentication();

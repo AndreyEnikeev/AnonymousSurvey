@@ -1,0 +1,46 @@
+﻿@* ============================================================
+   Главная страница. Открывается по адресу "/".
+   Если пользователь не вошёл — OnGet в модели редиректит на /Account/Login.
+   ============================================================ *@
+
+@* @page — делает файл Razor Page (а не partial view).
+   Без этой директивы страница не работает как самостоятельный маршрут. *@
+@page
+
+@* @model — привязка к классу PageModel.
+   Здесь — полный путь, но благодаря @using WebClient в _ViewImports
+   можно было бы писать короче. Полный путь оставлен для наглядности. *@
+@model WebClient.Pages.IndexModel
+
+@{
+    // Заголовок вкладки браузера. См. _Layout.cshtml: <title>@ViewData["Title"]...</title>
+    ViewData["Title"] = "Главная";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="card-title mb-3">Добро пожаловать</h1>
+
+                <p class="lead">
+                    @* User.Identity.Name — логин из ClaimTypes.Name,
+                       который мы положили в cookie при логине (Login.cshtml.cs). *@
+                    Вы вошли как <strong>@User.Identity?.Name</strong>
+
+                    @* Model.GetRoleName() — метод из IndexModel.cshtml.cs,
+                       возвращает человекочитаемое имя роли по claim. *@
+                    (<span class="badge bg-primary">@Model.GetRoleName()</span>).
+                </p>
+
+                <hr />
+
+                <p class="text-muted">
+                    Разделы системы будут появляться в этом меню по мере реализации:
+                    сначала — анкеты студента, затем — отчёты преподавателя,
+                    затем — администрирование и аудит.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

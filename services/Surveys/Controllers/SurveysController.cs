@@ -148,8 +148,9 @@ namespace Surveys.Controllers
             var result = surveys.Select(s => new SurveyListItemDto
             {
                 SurveyId = s.Id,
-                Title = $"{s.Discipline.Name} — {s.Teacher.User.Login}",
+                Title = $"{s.Discipline.Name} — {s.Teacher.User.FullName}",
                 PeriodId = s.PeriodId,
+                PeriodName = s.Period.Name,
                 AlreadySubmitted = votedSurveyIds.Contains(s.Id)
             }).ToList();
 
@@ -312,6 +313,7 @@ namespace Surveys.Controllers
                 .AsNoTracking()
                 .Include(s => s.Discipline)
                 .Include(s => s.Teacher).ThenInclude(t => t.User)
+                .Include(s => s.Period)
                 .Where(s => votedSurveyIds.Contains(s.Id))
                 .OrderByDescending(s => s.Period.EndDate)
                 .ToListAsync(ct);
@@ -319,9 +321,10 @@ namespace Surveys.Controllers
             var result = surveys.Select(s => new SurveyListItemDto
             {
                 SurveyId = s.Id,
-                Title = $"{s.Discipline.Name} — {s.Teacher.User.Login}",
+                Title = $"{s.Discipline.Name} — {s.Teacher.User.FullName}",
                 PeriodId = s.PeriodId,
-                AlreadySubmitted = true
+                PeriodName = s.Period.Name,
+                AlreadySubmitted = votedSurveyIds.Contains(s.Id)
             }).ToList();
 
             return Ok(result);
@@ -433,6 +436,38 @@ namespace Surveys.Controllers
                 Status = newStatus,
                 UpdatedAt = DateTime.UtcNow
             });
+        }
+
+        /// <summary>
+        /// Создание нового периода в статусе draft (D-20).
+        /// </summary>
+        [HttpPost("/api/admin/periods")]
+        [Authorize(Roles = "3")]
+        public async Task<IActionResult> CreatePeriod([FromBody] CreatePeriodRequest request, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+                return BadRequest(new { message = "Название периода обязательно." });
+
+            if (request.EndDate < request.StartDate)
+                return BadRequest(new { message = "Дата окончания не может быть раньше даты начала." });
+
+            var adminIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+            if (!Guid.TryParse(adminIdClaim, out var adminId)) return Unauthorized();
+
+            var period = new Period
+            {
+                Id = Guid.NewGuid(),
+                Name = request.Name,
+                StartDate = request.StartDate,
+                EndDate = request.EndDate,
+                StatusId = 1, // draft по умолчанию
+                CreatedBy = adminId
+            };
+
+            _db.Periods.Add(period);
+            await _db.SaveChangesAsync(ct);
+
+            return Ok(new { id = period.Id, message = "Период успешно создан." });
         }
     }
 }

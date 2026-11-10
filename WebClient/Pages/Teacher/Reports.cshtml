@@ -1,0 +1,91 @@
+﻿@* ============================================================
+   O-07: Агрегированный отчёт для преподавателя.
+   
+   Источник данных — GET /api/reports/aggregated (Analytics C-05)
+   через Gateway. Сервер сам ограничивает данные текущим
+   преподавателем по JWT, поэтому клиент не передаёт никаких
+   фильтров и не может запросить чужой отчёт.
+
+   Используется кэш Redis на стороне Analytics (TTL 5 минут).
+   При первом запросе отчёт может формироваться дольше, при
+   повторных — мгновенно, пока кэш не истечёт.
+   ============================================================ *@
+
+@page
+@model WebClient.Pages.Teacher.ReportsModel
+@{
+    ViewData["Title"] = "Мои отчёты";
+}
+
+<h1 class="mb-4">Агрегированные отчёты</h1>
+
+@* Ошибка загрузки — если Gateway вернул не-200 или сеть недоступна. *@
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+@* Пустое состояние — не ошибка. Например, преподаватель ведёт
+   дисциплины, но студенты ещё не отправили ни одной анкеты,
+   либо анкеты в статусе draft (ещё не открыты). *@
+@if (Model.Report?.Items == null || !Model.Report.Items.Any())
+{
+    <div class="alert alert-info">
+        Пока нет данных для отображения. Возможно, студенты ещё не заполнили анкеты.
+    </div>
+}
+else
+{
+    @* Таблица отчёта. Каждая строка — одна анкета (дисциплина + период).
+       Преподаватель видит только свои (фильтр на сервере по JWT). *@
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Период</th>
+                    <th>Дисциплина</th>
+                    <th>Средний балл</th>
+                    <th>Оценок</th>
+                    <th>Комментариев</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Report.Items)
+                {
+                    <tr>
+                        @* PeriodName и DisciplineName — расширение контракта (D-18).
+                           Без них пришлось бы выводить GUID. *@
+                        <td>@item.PeriodName</td>
+                        <td>@item.DisciplineName</td>
+                        <td>
+                            @* Цветовая индикация среднего балла:
+                               - >= 4.0 — зелёный (хорошо);
+                               - 3.0–3.99 — жёлтый (средне);
+                               - < 3.0 — красный (требует внимания).
+                               Это UI-удобство, не влияет на логику авторизации. *@
+                            @if (item.AverageScore >= 4.0)
+                            {
+                                <span class="badge bg-success fs-6">@item.AverageScore.ToString("0.00")</span>
+                            }
+                            else if (item.AverageScore >= 3.0)
+                            {
+                                <span class="badge bg-warning text-dark fs-6">@item.AverageScore.ToString("0.00")</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger fs-6">@item.AverageScore.ToString("0.00")</span>
+                            }
+                        </td>
+
+                        @* ResponseCount — количество числовых ответов (оценок).
+                           TextResponsesCount — количество текстовых комментариев.
+                           Комментарии не выводятся в открытом виде: это может
+                           деанонимизировать студента, если текст уникален. *@
+                        <td>@item.ResponseCount</td>
+                        <td>@item.TextResponsesCount</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

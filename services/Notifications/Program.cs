@@ -42,10 +42,10 @@ namespace Notifications
                 ?? throw new InvalidOperationException("RabbitMq:Username не настроен в User Secrets");
             var rabbitPass = builder.Configuration["RabbitMq:Password"]
                 ?? throw new InvalidOperationException("RabbitMq:Password не настроен в User Secrets");
-
             builder.Services.AddMassTransit(x =>
             {
                 x.AddConsumer<PeriodStatusChangedConsumer>();
+                x.AddConsumer<PasswordResetRequestedConsumer>();
 
                 x.UsingRabbitMq((context, cfg) =>
                 {
@@ -53,16 +53,32 @@ namespace Notifications
                     {
                         h.Username(rabbitUser);
                         h.Password(rabbitPass);
-                        // Отправляем Heartbeat каждые 30 секунд, чтобы брокер не рвал соединение при простое.
                         h.Heartbeat(TimeSpan.FromSeconds(30));
                     });
 
+                    // ============================================================
+                    // Endpoint 1: смена статуса периода
+                    // ============================================================
                     cfg.ReceiveEndpoint("notifications-period-status-changed", e =>
                     {
                         e.ConfigureConsumer<PeriodStatusChangedConsumer>(context);
 
-                        // Ретраи при ошибке обработки (сбой SMTP и т. п.).
-                        // После трёх попыток сообщение уходит в _error-очередь.
+                        e.UseMessageRetry(r => r.Intervals(
+                            TimeSpan.FromSeconds(5),
+                            TimeSpan.FromSeconds(15),
+                            TimeSpan.FromSeconds(30)));
+                    });
+
+                    // ============================================================
+                    // Endpoint 2: восстановление пароля (D-14)
+                    // ============================================================
+                    cfg.ReceiveEndpoint("notifications-password-reset-requested", e =>
+                    {
+                        e.ConfigureConsumer<PasswordResetRequestedConsumer>(context);
+
+                        // Ретраи: если SMTP временно недоступен, MassTransit повторит
+                        // обработку 3 раза с паузами. После — сообщение уйдёт в
+                        // notifications-password-reset-requested_error.
                         e.UseMessageRetry(r => r.Intervals(
                             TimeSpan.FromSeconds(5),
                             TimeSpan.FromSeconds(15),
@@ -70,7 +86,6 @@ namespace Notifications
                     });
                 });
             });
-
             var host = builder.Build();
             host.Run();
         }

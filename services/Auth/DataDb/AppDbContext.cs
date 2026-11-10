@@ -42,27 +42,43 @@ namespace Auth.DataDb
 
     /// <summary>
     /// Модель пользователя (строго соответствует таблице users из schema.sql).
+    ///
+    /// Поле full_name добавлено по D-11: колонка есть в схеме,
+    /// используется для персонализации писем (PasswordResetRequested).
     /// </summary>
     [Table("users")]
     public class User
     {
+        /// <summary>Уникальный идентификатор пользователя (uuid).</summary>
         [Column("id")]
         public Guid Id { get; set; }
 
+        /// <summary>Логин (уникальный, используется для входа).</summary>
         [Column("login")]
         public string Login { get; set; } = string.Empty;
 
+        /// <summary>Хеш пароля (Argon2id, PHC-строка). Никогда не возвращается клиенту.</summary>
         [Column("password_hash")]
         public string PasswordHash { get; set; } = string.Empty;
 
+        /// <summary>Соль пароля (отдельный столбец, см. п. 3.3 ЛР №2).</summary>
         [Column("password_salt")]
         public string PasswordSalt { get; set; } = string.Empty;
 
+        /// <summary>Идентификатор роли: 1=student, 2=teacher, 3=admin, 4=tech.</summary>
         [Column("role_id")]
         public short RoleId { get; set; }
 
+        /// <summary>Адрес электронной почты (уникальный, используется в O-02).</summary>
         [Column("email")]
         public string Email { get; set; } = string.Empty;
+
+        /// <summary>
+        /// ФИО пользователя. NOT NULL в БД (см. D-11).
+        /// Используется для персонализации писем (PasswordResetRequested.FullName).
+        /// </summary>
+        [Column("full_name")]
+        public string FullName { get; set; } = string.Empty;
     }
 
     /// <summary>

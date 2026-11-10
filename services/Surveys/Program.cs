@@ -25,7 +25,7 @@ namespace Surveys
             // 2. Настройка JWT-аутентификации
             // Ключ подписи должен совпадать с Auth и Gateway, иначе токены не пройдут.
             var jwtKey = builder.Configuration["Jwt:SigningKey"]
-                ?? throw new InvalidOperationException("Jwt:SigningKey не настроен в User Secrets");
+                ?? throw new InvalidOperationException("Jwt:SigningKey не настроен (User Secrets или Environment)");
 
             builder.Services
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -58,25 +58,31 @@ namespace Surveys
 
             // 4. Подключение к Redis (нужен для Idempotency-Key в O-05)
             var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
-                ?? throw new InvalidOperationException("ConnectionStrings:Redis не настроен в User Secrets");
+                ?? throw new InvalidOperationException("ConnectionStrings:Redis не настроен (User Secrets или Environment)");
+
+            // Настраиваем параметры подключения к Redis.
+            // abortConnect=false (AbortOnConnectFail) критически важен для Docker:
+            // он позволяет сервису запуститься, даже если Redis еще не готов, и переподключиться позже.
+            var redisOptions = StackExchange.Redis.ConfigurationOptions.Parse(redisConnectionString);
+            redisOptions.AbortOnConnectFail = false;
 
             builder.Services.AddSingleton<IConnectionMultiplexer>(
-                ConnectionMultiplexer.Connect(redisConnectionString));
+                ConnectionMultiplexer.Connect(redisOptions));
 
             // 5. Подключение к RabbitMQ через MassTransit (для отправки событий в O-09)
-            // Все настройки (хост, логин, пароль) читаются из User Secrets.
+            // Все настройки (хост, логин, пароль) читаются из конфигурации.
             var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
             var rabbitVHost = builder.Configuration["RabbitMq:VirtualHost"] ?? "/";
             var rabbitUser = builder.Configuration["RabbitMq:Username"]
-                ?? throw new InvalidOperationException("RabbitMq:Username не настроен в User Secrets");
+                ?? throw new InvalidOperationException("RabbitMq:Username не настроен (User Secrets или Environment)");
             var rabbitPass = builder.Configuration["RabbitMq:Password"]
-                ?? throw new InvalidOperationException("RabbitMq:Password не настроен в User Secrets");
+                ?? throw new InvalidOperationException("RabbitMq:Password не настроен (User Secrets или Environment)");
 
             builder.Services.AddMassTransit(x =>
             {
                 x.UsingRabbitMq((context, cfg) =>
                 {
-                    // Указываем, куда подключаться (localhost - проброшенный порт из Docker)
+                    // Указываем, куда подключаться
                     cfg.Host(rabbitHost, rabbitVHost, h =>
                     {
                         h.Username(rabbitUser);
@@ -90,7 +96,12 @@ namespace Surveys
             var app = builder.Build();
 
             // 6. HTTP-конвейер (порядок middleware критичен)
-            app.UseHttpsRedirection();
+            // В Docker контейнер общается по HTTP (внутри изолированной сети),
+            // поэтому UseHttpsRedirection применяем ТОЛЬКО в локальной разработке.
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseHttpsRedirection();
+            }
 
             // Кто ты? (проверка JWT)
             app.UseAuthentication();

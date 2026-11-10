@@ -1,0 +1,41 @@
+﻿@* ============================================================
+   Страница ошибок. Сюда попадают:
+     - 404 (несуществующая страница) — через UseStatusCodePagesWithReExecute;
+     - 4xx/5xx статус-коды из любого места приложения;
+     - необработанные исключения (в Production) — через UseExceptionHandler.
+
+   ВАЖНО: сюда НЕЛЬЗЯ выводить текст исключения, стек или SQL.
+   Только код ошибки, нейтральное описание и RequestId для поиска в логе сервера.
+   ============================================================ *@
+
+@page
+@model WebClient.Pages.ErrorModel
+
+@{
+    // GetTitle() возвращает "Ошибка 404" (если есть код) или просто "Ошибка" (500).
+    ViewData["Title"] = Model.GetTitle();
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 text-center">
+
+        @* Большая цифра кода. ?? — оператор C# "null-coalescing":
+           если Model.Code == null, показать "500". *@
+        <h1 class="display-3 text-danger">@(Model.Code?.ToString() ?? "500")</h1>
+
+        @* Человекочитаемое описание, см. GetMessage() в ErrorModel. *@
+        <p class="lead">@Model.GetMessage()</p>
+
+        @* RequestId — идентификатор запроса. Полезен, если пользователь сообщает
+           "у меня ошибка": по нему в логах сервера можно найти весь стек.
+           Никакой внутренней информации наружу не уходит — только opaque ID. *@
+        @if (Model.ShowRequestId)
+        {
+            <p class="text-muted small">
+                Request ID: <code>@Model.RequestId</code>
+            </p>
+        }
+
+        <a asp-page="/Index" class="btn btn-primary mt-3">На главную</a>
+    </div>
+</div>

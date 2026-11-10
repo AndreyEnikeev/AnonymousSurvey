@@ -1,0 +1,36 @@
+﻿@page
+@model WebClient.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Вход";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-4">
+        <h1 class="mb-4">Вход в систему</h1>
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                @Model.ErrorMessage
+            </div>
+        }
+
+        <form method="post">
+            <div class="mb-3">
+                <label asp-for="Login" class="form-label">Логин</label>
+                <input asp-for="Login" class="form-control" autocomplete="username" required autofocus />
+            </div>
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label">Пароль</label>
+                <input asp-for="Password" type="password" class="form-control" autocomplete="current-password" required />
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Войти</button>
+        </form>
+        @* Ссылка на форму восстановления пароля (O-02, шаг 1).
+        Сервер отправит письмо со ссылкой на /Account/ResetPassword?token=...
+        В dev письмо уходит в MailHog (http://localhost:8025), в prod — реальная почта. *@
+        <p class="mt-4 text-center small">
+            <a asp-page="/Account/ForgotPassword">Забыли пароль?</a>
+        </p>
+    </div>
+</div>

@@ -52,6 +52,8 @@ namespace Surveys.DataDb
         /// <summary>Журнал событий безопасности (таблица audit_events).</summary>
         public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
+        public DbSet<TeacherDiscipline> TeacherDisciplines { get; set; }
+
         /// <summary>
         /// Настройка связей между сущностями и явное указание имён таблиц.
         /// </summary>
@@ -74,6 +76,7 @@ namespace Surveys.DataDb
             modelBuilder.Entity<VoterCheckin>().ToTable("voter_checkins");
             modelBuilder.Entity<Ballot>().ToTable("ballots");
             modelBuilder.Entity<Answer>().ToTable("answers");
+            modelBuilder.Entity<TeacherDiscipline>().HasKey(td => new { td.TeacherId, td.DisciplineId });
             // Настройка таблицы аудита
             modelBuilder.Entity<AuditEvent>(e =>
             {

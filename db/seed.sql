@@ -4,12 +4,17 @@
 -- 
 -- ВАЖНО: Хэши и соли здесь - заглушки, которые проходят ограничения БД:
 -- password_hash >= 32 символов, password_salt >= 16 символов.
--- Настоящие Argon2id-хэши генерируются через C# команду: dotnet run -- --seed
+-- Настоящие Argon2id-хэши генерируются АВТОМАТИЧЕСКИ при первом старте
+-- сервиса Auth (см. SeedPasswordsAutomatically в Auth/Program.cs).
 -- ============================================================
+
+SET client_encoding = 'UTF8';
 
 -- ============================================================
 -- 1. ПОЛЬЗОВАТЕЛИ (7 штук)
 -- Роли: 1=student, 2=teacher, 3=admin, 4=tech
+-- Хэши-заглушки по длине проходят CHECK ck_users_hash_len (>= 32) 
+-- и ck_users_salt_len (>= 16) из schema.sql.
 -- ============================================================
 INSERT INTO users (id, login, password_hash, password_salt, role_id, email, full_name) VALUES
     -- Студенты

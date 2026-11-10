@@ -1,0 +1,112 @@
+﻿@* ============================================================
+   _Layout.cshtml — общий HTML-каркас всех страниц.
+   Не самостоятельная страница: у неё нет @page.
+   Вызывается автоматически через _ViewStart.cshtml.
+
+   Содержимое конкретной страницы (Index.cshtml, Login.cshtml, ...)
+   подставляется в месте вызова @RenderBody() ниже.
+   ============================================================ *@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    @* @ViewData["Title"] — заголовок, который каждая страница задаёт через
+       @{ ViewData["Title"] = "..."; } в начале файла.
+       Если не задан — Razor подставит пустую строку. *@
+    <title>@ViewData["Title"] — Anonymous Survey</title>
+
+    @* Bootstrap с CDN. Подключаем здесь один раз — используется на всех страницах. *@
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+
+    <style>
+        /* Общие стили. Мелочь, но лучше не размазывать по страницам. */
+        body {
+            padding-bottom: 40px;
+            background-color: #f8f9fa;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+        }
+
+        main {
+            min-height: 70vh;
+        }
+    </style>
+</head>
+<body>
+
+    @* ===================== ШАПКА ===================== *@
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container">
+                @* Логотип — всегда виден. asp-page="/Index" — TagHelper,
+               генерирует href="/Index" (или "/" — зависит от маршрута). *@
+                <a class="navbar-brand" asp-page="/Index">Anonymous Survey</a>
+
+                @* Меню по ролям. Роли — это roleId из JWT, положенные в cookie
+               при логине (Login.cshtml.cs). IsInRole("1") проверяет claim
+               ClaimTypes.Role = "1" и т.д. Те же значения, что у [Authorize(Roles="...")]
+               в контроллерах — единая система авторизации. *@
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <ul class="navbar-nav me-auto">
+                        @if (User.IsInRole("1"))
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-page="/Student/Surveys">Анкеты</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-page="/Student/MySurveys">История</a></li>
+                        }
+                        @if (User.IsInRole("2"))
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-page="/Teacher/Reports">Отчёты</a></li>
+                        }
+                        @if (User.IsInRole("3"))
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-page="/Admin/Periods">Периоды</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-page="/Admin/Surveys/Index">Шаблоны анкет</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-page="/Admin/Export">Выгрузки</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-page="/Admin/Audit">Аудит</a></li>
+                        }
+                        @if (User.IsInRole("4"))
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-page="/Admin/Audit">Аудит</a></li>
+                        }
+                    </ul>
+
+                    <div class="d-flex align-items-center">
+                        @* User.Identity.Name — это ФИО (ClaimTypes.Name), положенное
+                       при логине из claim "full_name" (см. Шаг 7.6). *@
+                        <span class="text-white-50 me-3 small">@User.Identity.Name</span>
+                        <form method="post" asp-page="/Account/Logout" class="d-inline">
+                            <button type="submit" class="btn btn-outline-light btn-sm">Выйти</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </nav>
+    </header>
+    @* ===================== КОНТЕНТ СТРАНИЦЫ ===================== *@
+    <main class="container mt-4">
+        @* СЮДА подставляется содержимое конкретной .cshtml-страницы.
+           Это и есть "дырка" в каркасе, о которой мы говорили. *@
+        @RenderBody()
+    </main>
+
+    @* ===================== ПОДВАЛ ===================== *@
+    <footer class="container mt-5 text-muted small border-top pt-3">
+        AnonymousSurvey · Лабораторная работа №3 · @DateTime.UtcNow.Year
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    @* RenderSection — место, куда страницы могут вставить свой <script>.
+       required: false — секция необязательна, если страница её не определила,
+       ничего не сломается. Пример использования в странице:
+         @section Scripts { <script>...</script> } *@
+    @await RenderSectionAsync("Scripts", required: false)
+
+</body>
+</html>

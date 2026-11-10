@@ -135,8 +135,11 @@ namespace Analytics.Controllers
                 return new AggregatedReportItemDto
                 {
                     DisciplineId = t.DisciplineId,
+                    DisciplineName = t.Discipline.Name,
                     TeacherId = t.TeacherId,
+                    TeacherName = t.Teacher.User.FullName,
                     PeriodId = t.PeriodId,
+                    PeriodName = t.Period.Name,
                     AverageScore = Math.Round(avg, 2),
                     ResponseCount = numericAnswers.Count,
                     TextResponsesCount = textAnswers.Count, // Считаем текстовые ответы

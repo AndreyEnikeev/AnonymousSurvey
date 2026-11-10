@@ -41,6 +41,21 @@
         /// Всегда null в текущей реализации, так как LLM исключен из задания (D-01).
         /// </summary>
         public object? Sentiment { get; init; }
+
+        /// <summary>
+        /// Название дисциплины
+        /// </summary>
+        public string DisciplineName { get; init; } = string.Empty;
+
+        /// <summary>
+        /// ФИО преподавателя
+        /// </summary>
+        public string TeacherName { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Название периода
+        /// </summary>
+        public string PeriodName { get; init; } = string.Empty;
     }
 
     /// <summary>

@@ -61,7 +61,8 @@ GRANT SELECT ON teachers, disciplines, teacher_disciplines TO surveys_service;
 
 -- Пишет логи о смене периодов и отправке анкет
 -- (SELECT нужен, чтобы EF Core мог прочитать сгенерированный id через RETURNING)
-GRANT INSERT, SELECT ON audit_events TO surveys_service;
+GRANT INSERT ON audit_events TO surveys_service;
+GRANT SELECT (id) ON audit_events TO surveys_service;
 
 -- Права на последовательности (для создания вопросов, бюллетеней и ответов)
 GRANT USAGE, SELECT ON SEQUENCE questions_id_seq       TO surveys_service;
@@ -86,13 +87,14 @@ GRANT SELECT, INSERT, UPDATE ON exports TO analytics_service;
 GRANT SELECT ON export_formats, export_statuses TO analytics_service;
 
 GRANT INSERT ON audit_events TO analytics_service;
+GRANT SELECT (id) ON audit_events TO analytics_service;
 GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq TO analytics_service;
 
 -- ============================================================
 -- СЕРВИС УВЕДОМЛЕНИЙ
 -- ============================================================
 GRANT INSERT ON audit_events TO notifications_service;
-GRANT SELECT (id, email, role_id, full_name) ON users TO notifications_service
+GRANT SELECT (id, email, role_id, full_name) ON users TO notifications_service;
 GRANT SELECT (id) ON audit_events TO notifications_service;
 GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq TO notifications_service;
 

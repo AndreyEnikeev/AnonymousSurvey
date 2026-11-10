@@ -1,0 +1,71 @@
+﻿@page
+@model WebClient.Pages.Admin.Surveys.IndexModel
+@{
+    ViewData["Title"] = "Управление анкетами";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Управление анкетами</h1>
+    @* Ссылка на создание новой анкеты *@
+    <a asp-page="/Admin/Surveys/Edit" class="btn btn-success">+ Создать анкету</a>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+@if (Model.Surveys == null || !Model.Surveys.Any())
+{
+    <div class="alert alert-info">Анкеты ещё не созданы.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Период</th>
+                    <th>Дисциплина</th>
+                    <th>Преподаватель</th>
+                    <th>Статус</th>
+                    <th>Вопросов</th>
+                    <th>Ответов</th>
+                    <th class="text-end">Действие</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.Surveys)
+                {
+                    <tr>
+                        <td>@s.PeriodName</td>
+                        <td>@s.DisciplineName</td>
+                        <td>@s.TeacherName</td>
+                        <td>
+                            <span class="badge @(s.StatusCode == "draft" ? "bg-warning text-dark" : (s.StatusCode == "active" ? "bg-success" : "bg-secondary"))">
+                                @s.StatusCode
+                            </span>
+                        </td>
+                        <td>@s.QuestionsCount</td>
+                        <td>@s.AnswersCount</td>
+                        <td class="text-end">
+                            @* Редактировать можно только черновики (draft) *@
+                            @if (s.StatusCode == "draft")
+                            {
+                                @* Кнопка публикации *@
+                                <form method="post" asp-page-handler="Publish" asp-route-id="@s.SurveyId" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-success" title="Сделать анкету доступной">Опубликовать</button>
+                                </form>
+                                <a asp-page="/Admin/Surveys/Edit" asp-route-id="@s.SurveyId" class="btn btn-sm btn-primary ms-1">Редактировать</a>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-secondary" disabled title="Редактирование заблокировано">В работе</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
