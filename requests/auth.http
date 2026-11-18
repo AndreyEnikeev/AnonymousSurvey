@@ -1,5 +1,3 @@
-@host = http://localhost:8080
-
 # ============================================================
 # 1. ЛОГИНЫ (Сохраняем ответы в переменные)
 # ============================================================
@@ -10,8 +8,8 @@ POST {{host}}/api/auth/login
 Content-Type: application/json
 
 {
-  "login": "student1",
-  "password": "Student1!Pass"
+  "login": "{{studentLogin}}",
+  "password": "{{studentPassword}}"
 }
 
 ### O-01: Логин (Teacher)
@@ -20,8 +18,8 @@ POST {{host}}/api/auth/login
 Content-Type: application/json
 
 {
-  "login": "teacher1",
-  "password": "Teacher1!Pass"
+  "login": "{{teacherLogin}}",
+  "password": "{{teacherPassword}}"
 }
 
 ### O-01: Логин (Admin)
@@ -30,8 +28,8 @@ POST {{host}}/api/auth/login
 Content-Type: application/json
 
 {
-  "login": "admin1",
-  "password": "Admin1!Pass"
+  "login": "{{adminLogin}}",
+  "password": "{{adminPassword}}"
 }
 
 ### Негативный: Логин с неверным паролем (ожидается 401)

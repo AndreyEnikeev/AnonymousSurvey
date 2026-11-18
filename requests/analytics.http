@@ -1,0 +1,56 @@
+# ============================================================
+# ЛОГИНЫ (Нужны для получения токенов внутри этого файла)
+# ============================================================
+### O-01: Логин (Teacher)
+# @name loginTeacher
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "login": "{{teacherLogin}}",
+  "password": "{{teacherPassword}}"
+}
+
+### O-01: Логин (Admin)
+# @name loginAdmin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "login": "{{adminLogin}}",
+  "password": "{{adminPassword}}"
+}
+
+# ============================================================
+# ПОДГОТОВКА (Получаем ID периода)
+# ============================================================
+### O-08: Список всех периодов
+# @name getPeriods
+GET {{host}}/api/admin/periods
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+# ============================================================
+# ОТЧЕТЫ (O-07, O-10)
+# ============================================================
+
+### O-07: Агрегированный отчёт — Преподаватель
+# Видит только свои данные
+GET {{host}}/api/reports/aggregated
+Authorization: Bearer {{loginTeacher.response.body.$.accessToken}}
+
+### O-07: Агрегированный отчёт — Администратор
+# Видит всё
+GET {{host}}/api/reports/aggregated
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### O-10: Экспорт отчёта в Excel — Администратор
+# Берет ID первого периода из запроса getPeriods выше
+POST {{host}}/api/admin/export
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Idempotency-Key: {{$guid}}
+Content-Type: application/json
+
+{
+  "periodId": "{{getPeriods.response.body.$.[0].periodId}}",
+  "format": "xlsx"
+}

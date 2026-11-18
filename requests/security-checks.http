@@ -1,11 +1,23 @@
-@host = http://localhost:8080
+# ============================================================
+# ЛОГИНЫ (Нужны для получения токенов внутри этого файла)
+# ============================================================
+### O-01: Логин (Student)
+# @name loginStudent
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "login": "{{studentLogin}}",
+  "password": "{{studentPassword}}"
+}
 
 # ============================================================
 # ПРОВЕРКА 1: Запрос объекта другого пользователя
 # Студент пытается получить отчёт преподавателя
 # ============================================================
 ### Ожидается: 403 Forbidden
-GET {{host}}/api/reports/aggregated?teacherId={{loginTeacher.response.body.$.userId}}
+# teacherId = aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa (из seed.sql)
+GET {{host}}/api/reports/aggregated?teacherId=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
 Authorization: Bearer {{loginStudent.response.body.$.accessToken}}
 
 # ============================================================
